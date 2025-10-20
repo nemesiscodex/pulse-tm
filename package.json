@@ -3,8 +3,17 @@
   "module": "src/index.tsx",
   "type": "module",
   "private": true,
+  "scripts": {
+    "dev": "bun run src/index.tsx",
+    "pulse": "bun run src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target bun"
+  },
+  "bin": {
+    "pulse": "./src/index.ts"
+  },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@types/prompts": "^2.4.9"
   },
   "peerDependencies": {
     "typescript": "^5"
@@ -12,6 +21,8 @@
   "dependencies": {
     "@opentui/core": "^0.1.27",
     "@opentui/react": "^0.1.27",
-    "react": "^19.1.1"
+    "react": "^19.1.1",
+    "yaml": "^2.3.4",
+    "prompts": "^2.4.2"
   }
 }
