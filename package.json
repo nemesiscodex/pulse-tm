@@ -23,11 +23,11 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
     "@opentui/core": "^0.1.27",
     "@opentui/react": "^0.1.27",
-    "react": "^19.1.1",
-    "yaml": "^2.3.4",
     "prompts": "^2.4.2",
-    "@modelcontextprotocol/sdk": "^1.0.0"
+    "react": "^19.1.1",
+    "yaml": "^2.3.4"
   }
 }
