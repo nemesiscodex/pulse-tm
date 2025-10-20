@@ -203,6 +203,19 @@ const TOOLS: Tool[] = [
       required: ['taskId'],
     },
   },
+  {
+    name: 'pulse_tags',
+    description: 'List all tags or tags with open tasks',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        all: {
+          type: 'boolean',
+          description: 'Show all tags including empty ones (default: false)',
+        },
+      },
+    },
+  },
 ];
 
 // Handle list tools request
@@ -432,6 +445,50 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: 'text',
               text: `Task details:\n${JSON.stringify(serializeTask(task), null, 2)}`,
+            },
+          ],
+        };
+      }
+
+      case 'pulse_tags': {
+        const { all } = args as { all?: boolean };
+        
+        const allTags = taskManager.getAllTags();
+        const showAll = all || false;
+        
+        let result = '';
+        
+        if (showAll) {
+          result = 'All tags:\n';
+          for (const tag of allTags) {
+            const tasks = taskManager.listTasks(tag);
+            result += `  ${tag} (${tasks.length} tasks)\n`;
+          }
+        } else {
+          result = 'Tags with open tasks:\n';
+          let foundOpenTasks = false;
+          
+          for (const tag of allTags) {
+            const openTasks = taskManager.listTasks(tag).filter(task => 
+              task.status === 'PENDING' || task.status === 'INPROGRESS'
+            );
+            
+            if (openTasks.length > 0) {
+              result += `  ${tag} (${openTasks.length} open)\n`;
+              foundOpenTasks = true;
+            }
+          }
+          
+          if (!foundOpenTasks) {
+            result += '  No tags with open tasks found.\n';
+          }
+        }
+        
+        return {
+          content: [
+            {
+              type: 'text',
+              text: result.trim(),
             },
           ],
         };
