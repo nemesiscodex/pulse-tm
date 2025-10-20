@@ -66,12 +66,12 @@ export class TaskManager {
     return updatedTask;
   }
 
-  updateTaskStatus(taskId: number, status: TaskStatus): Task | null {
-    const found = this.storage.findTask(taskId);
+  updateTaskStatus(taskId: number, status: TaskStatus, tag?: string): Task | null {
+    const found = this.storage.findTask(taskId, tag);
     if (!found) return null;
 
-    const { task, tag } = found;
-    const tagFile = this.storage.loadTagFile(tag);
+    const { task, tag: taskTag } = found;
+    const tagFile = this.storage.loadTagFile(taskTag);
     const taskIndex = tagFile.tasks.findIndex(t => t.id === taskId);
     
     if (taskIndex === -1) return null;
@@ -96,7 +96,7 @@ export class TaskManager {
     task.updatedAt = new Date();
     
     tagFile.tasks[taskIndex] = task;
-    this.storage.saveTagFile(tag, tagFile);
+    this.storage.saveTagFile(taskTag, tagFile);
     
     return task;
   }
@@ -184,6 +184,10 @@ export class TaskManager {
     this.storage.saveTagFile(tag, tagFile);
     
     return updatedSubtask;
+  }
+
+  getAllTags(): string[] {
+    return this.storage.getAllTags();
   }
 
   getTask(taskId: number, tag?: string): Task | null {

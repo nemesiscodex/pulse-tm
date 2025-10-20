@@ -40,5 +40,6 @@ export function parseArgs(argv: string[]): CommandArgs {
     }
   }
 
-  return { command, args, flags };
+  const tag = flags.tag as string | undefined;
+  return { command, args, flags, tag };
 }

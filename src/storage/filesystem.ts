@@ -84,7 +84,16 @@ export class Storage {
     }
   }
 
-  findTask(taskId: number): { task: Task; tag: string } | null {
+  findTask(taskId: number, tag?: string): { task: Task; tag: string } | null {
+    if (tag) {
+      const tagFile = this.loadTagFile(tag);
+      const task = tagFile.tasks.find(t => t.id === taskId);
+      if (task) {
+        return { task, tag };
+      }
+      return null;
+    }
+
     const tags = this.getAllTags();
     
     for (const tag of tags) {

@@ -31,7 +31,7 @@ export async function handleStatus(args: CommandArgs): Promise<void> {
   const taskManager = new TaskManager();
 
   try {
-    const updatedTask = taskManager.updateTaskStatus(taskId, status);
+    const updatedTask = taskManager.updateTaskStatus(taskId, status, args.tag);
     
     if (!updatedTask) {
       console.error(`Error: Task #${taskId} not found.`);

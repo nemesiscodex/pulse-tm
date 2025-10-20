@@ -6,6 +6,8 @@ import { handleStatus } from './commands/status';
 import { handleNext } from './commands/next';
 import { handleSubtask } from './commands/subtask';
 import { handleShow } from './commands/show';
+import { handleMcp } from './commands/mcp';
+import { handleTags } from './commands/tags';
 
 export async function handleCommand(args: CommandArgs): Promise<void> {
   switch (args.command) {
@@ -29,6 +31,12 @@ export async function handleCommand(args: CommandArgs): Promise<void> {
       break;
     case 'show':
       await handleShow(args);
+      break;
+    case 'mcp':
+      await handleMcp();
+      break;
+    case 'tags':
+      await handleTags(args);
       break;
     case 'help':
     case '--help':
@@ -55,6 +63,8 @@ COMMANDS:
   next                  Get next task to work on
   subtask <action>      Manage subtasks
   show <id>             Show detailed task information
+  mcp                   Start MCP server for AI integration
+  tags                  List tags
 
 FLAGS:
   -d, --description     Task description
@@ -62,6 +72,7 @@ FLAGS:
   -s, --status         Filter by status
   --subtasks           Include subtasks
   --all                Show all tasks including completed
+  --all                Show all tags (including empty)
 
 EXAMPLES:
   pulse add "Fix bug" -d "Critical issue in login" --tag bug
@@ -70,5 +81,7 @@ EXAMPLES:
   pulse next --tag frontend
   pulse subtask add 1 "Write tests"
   pulse show 1 --tag bug
+  pulse tags
+  pulse tags --all
 `);
 }

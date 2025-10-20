@@ -30,4 +30,5 @@ export interface CommandArgs {
   command: string;
   args: string[];
   flags: Record<string, string | boolean>;
+  tag?: string;
 }

@@ -101,7 +101,7 @@ async function handleUpdateSubtask(args: CommandArgs, taskManager: TaskManager, 
 
     console.log(`✓ Updated subtask ${parentTaskId}.${subtaskId}:`);
     if (updates.title) console.log(`  Title: ${updatedSubtask.title}`);
-    if (updates.description !== undefined) console.log(`  Description: ${updatedSubtask.description || '(none)'}`);
+
   } catch (error) {
     console.error('Error updating subtask:', error instanceof Error ? error.message : String(error));
   }
