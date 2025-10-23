@@ -3,9 +3,9 @@
   "module": "src/index.tsx",
   "type": "module",
   "scripts": {
-    "dev": "bun run src/index.tsx",
     "pulse": "bun run src/index.ts",
     "build": "bun build src/index.ts --outdir dist --target bun --minify",
+    "prepare": "bun run build && chmod +x dist/index.js",
     "lint": "bun tsc --noEmit",
     "lint:eslint": "eslint src --ext .ts,.tsx"
   },

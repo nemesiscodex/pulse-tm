@@ -225,4 +225,20 @@ export class TaskManager {
     
     return updatedSubtask;
   }
+
+  deleteTask(taskId: number, tag?: string): boolean {
+    const found = this.storage.findTask(taskId, tag);
+    if (!found) return false;
+
+    const { tag: taskTag } = found;
+    const tagFile = this.storage.loadTagFile(taskTag);
+    const taskIndex = tagFile.tasks.findIndex(t => t.id === taskId);
+    
+    if (taskIndex === -1) return false;
+
+    tagFile.tasks.splice(taskIndex, 1);
+    this.storage.saveTagFile(taskTag, tagFile);
+    
+    return true;
+  }
 }
