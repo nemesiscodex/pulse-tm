@@ -9,6 +9,7 @@ import { handleShow } from './commands/show';
 import { handleMcp } from './commands/mcp';
 import { handleTags } from './commands/tags';
 import { handleDelete } from './commands/delete';
+import { handleUi } from './commands/ui';
 
 export async function handleCommand(args: CommandArgs): Promise<void> {
   // Check for --help flag on any command
@@ -42,6 +43,9 @@ export async function handleCommand(args: CommandArgs): Promise<void> {
     case 'delete':
       await handleDelete(args);
       break;
+    case 'ui':
+      await handleUi();
+      break;
     case 'mcp':
       await handleMcp();
       break;
@@ -74,6 +78,7 @@ COMMANDS:
   subtask <action>      Manage subtasks
   show <id>             Show detailed task information
   delete <id>           Delete a task
+  ui                    Launch the interactive dashboard
   mcp                   Start MCP server for AI integration
   tags                  List tags
   help                  Show this help message
@@ -195,6 +200,18 @@ EXAMPLES:
   pulse next
   pulse next --tag feature
   pulse next --tag bug
+`);
+      break;
+    case 'ui':
+      console.log(`
+USAGE:
+  pulse ui
+
+DESCRIPTION:
+  Launch the interactive dashboard for browsing and updating tasks.
+
+SHORTCUTS:
+  Arrow keys to navigate, e/d to edit, s to cycle status, x to delete, a to toggle completed, t to toggle tabs, q to quit.
 `);
       break;
     case 'subtask':

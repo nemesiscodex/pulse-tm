@@ -1,5 +1,6 @@
 import type { Task, Subtask, TaskStatus } from '../types';
 import { Storage } from '../storage/filesystem';
+import { sanitizeTagName, isValidTagName } from '../utils/tag-sanitizer';
 
 export class TaskManager {
   private storage: Storage;
@@ -8,8 +9,23 @@ export class TaskManager {
     this.storage = new Storage(baseDir);
   }
 
+  /**
+   * Create a new tag by initializing its tag file if it doesn't exist yet.
+   * Also safe to call if the tag already exists (will no-op).
+   */
+  createTag(tag: string): void {
+    const normalized = sanitizeTagName(tag);
+    if (!isValidTagName(normalized)) return;
+
+    // Simply persist an empty TagFile; storage handles creating the file.
+    const existing = this.storage.getAllTags();
+    if (existing.includes(normalized)) return;
+    this.storage.saveTagFile(normalized, { next_id: 1, tasks: [] });
+  }
+
   createTask(title: string, description?: string, tag: string = 'base'): Task {
-    const tagFile = this.storage.loadTagFile(tag);
+    const normalizedTag = isValidTagName(sanitizeTagName(tag)) ? sanitizeTagName(tag) : 'base';
+    const tagFile = this.storage.loadTagFile(normalizedTag);
     const now = new Date();
     
     const task: Task = {
@@ -17,7 +33,7 @@ export class TaskManager {
       title,
       description,
       status: 'PENDING',
-      tag,
+      tag: normalizedTag,
       order: tagFile.tasks.length + 1,
       subtasks: [],
       createdAt: now,
@@ -47,16 +63,19 @@ export class TaskManager {
     
     // Handle tag change
     if (updates.tag && updates.tag !== oldTag) {
+      const normalized = sanitizeTagName(updates.tag);
+      if (!isValidTagName(normalized)) return null;
+
       // Remove from old tag
       oldTagFile.tasks.splice(taskIndex, 1);
       this.storage.saveTagFile(oldTag, oldTagFile);
       
       // Add to new tag
-      const newTagFile = this.storage.loadTagFile(updates.tag);
-      updatedTask.tag = updates.tag;
+      const newTagFile = this.storage.loadTagFile(normalized);
+      updatedTask.tag = normalized;
       updatedTask.order = newTagFile.tasks.length + 1;
       newTagFile.tasks.push(updatedTask);
-      this.storage.saveTagFile(updates.tag, newTagFile);
+      this.storage.saveTagFile(normalized, newTagFile);
     } else {
       // Update in same tag
       oldTagFile.tasks[taskIndex] = updatedTask;
@@ -66,7 +85,12 @@ export class TaskManager {
     return updatedTask;
   }
 
-  updateTaskStatus(taskId: number, status: TaskStatus, tag?: string): Task | null {
+  updateTaskStatus(
+    taskId: number,
+    status: TaskStatus,
+    tag?: string,
+    options?: { completeSubtasks?: boolean }
+  ): Task | null {
     const found = this.storage.findTask(taskId, tag);
     if (!found) return null;
 
@@ -76,20 +100,13 @@ export class TaskManager {
     
     if (taskIndex === -1) return null;
 
-    // Check for incomplete subtasks when marking as DONE
-    if (status === 'DONE') {
-      const incompleteSubtasks = task.subtasks.filter(st => st.status !== 'DONE');
-      if (incompleteSubtasks.length > 0) {
-        console.log(`Task ${taskId} has ${incompleteSubtasks.length} incomplete subtasks.`);
-        console.log('Marking all subtasks as DONE...');
-        
-        // Mark all subtasks as DONE
-        task.subtasks = task.subtasks.map(subtask => ({
-          ...subtask,
-          status: 'DONE',
-          updatedAt: new Date()
-        }));
-      }
+    // Optionally mark all subtasks as DONE when explicitly requested
+    if (status === 'DONE' && options?.completeSubtasks) {
+      task.subtasks = task.subtasks.map(subtask => ({
+        ...subtask,
+        status: 'DONE',
+        updatedAt: new Date()
+      }));
     }
 
     task.status = status;
@@ -184,6 +201,53 @@ export class TaskManager {
     this.storage.saveTagFile(tag, tagFile);
     
     return updatedSubtask;
+  }
+
+  deleteSubtask(parentTaskId: number, subtaskId: number): boolean {
+    const found = this.storage.findTask(parentTaskId);
+    if (!found) return false;
+
+    const { task, tag } = found;
+    const tagFile = this.storage.loadTagFile(tag);
+    const taskIndex = tagFile.tasks.findIndex(t => t.id === parentTaskId);
+    if (taskIndex === -1) return false;
+
+    const subtaskIndex = task.subtasks.findIndex(st => st.id === subtaskId);
+    if (subtaskIndex === -1) return false;
+
+    task.subtasks = task.subtasks
+      .filter((_, i) => i !== subtaskIndex)
+      .map((st, i) => ({ ...st, order: i + 1 }));
+    task.updatedAt = new Date();
+
+    tagFile.tasks[taskIndex] = task;
+    this.storage.saveTagFile(tag, tagFile);
+    return true;
+  }
+
+  reorderSubtasks(parentTaskId: number, fromIndex: number, toIndex: number): Subtask[] | null {
+    const found = this.storage.findTask(parentTaskId);
+    if (!found) return null;
+
+    const { task, tag } = found;
+    const tagFile = this.storage.loadTagFile(tag);
+    const taskIndex = tagFile.tasks.findIndex(t => t.id === parentTaskId);
+    if (taskIndex === -1) return null;
+
+    const arr = [...task.subtasks];
+    if (fromIndex < 0 || fromIndex >= arr.length || toIndex < 0 || toIndex >= arr.length) return null;
+
+    const moved = arr[fromIndex];
+    if (!moved) return null;
+    arr.splice(fromIndex, 1);
+    arr.splice(toIndex, 0, moved);
+    const now = new Date();
+    task.subtasks = arr.map((st, i) => ({ ...st, order: i + 1, updatedAt: now }));
+    task.updatedAt = now;
+
+    tagFile.tasks[taskIndex] = task;
+    this.storage.saveTagFile(tag, tagFile);
+    return task.subtasks;
   }
 
   getAllTags(): string[] {
