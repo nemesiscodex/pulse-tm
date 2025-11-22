@@ -1,4 +1,3 @@
-// File: src/version.ts
 /**
  * Central place for the CLI/app version string.
  *
@@ -7,6 +6,6 @@
  * package.json version for global installs or direct execution.
  */
 export const PULSE_VERSION: string =
-  process.env.npm_package_version ?? '0.1.0';
+  process.env.npm_package_version!;
 
 

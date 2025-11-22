@@ -1,4 +1,3 @@
-// File: src/cli/commands/version.ts
 import { PULSE_VERSION } from '../../version';
 
 /**

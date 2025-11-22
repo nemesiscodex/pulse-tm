@@ -18,6 +18,14 @@ export class Storage {
     }
   }
 
+  /**
+   * Get the full path to the .pulse directory
+   * @returns The absolute path to the .pulse directory
+   */
+  getPulseDir(): string {
+    return this.pulseDir;
+  }
+
   private getTagFilePath(tag: string): string {
     const sanitizedTag = sanitizeTagName(tag);
     return join(this.pulseDir, `${sanitizedTag}.yml`);

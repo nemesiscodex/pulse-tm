@@ -7,16 +7,21 @@ import {
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { TaskManager } from '../core/task-manager.js';
 import type { Task, TaskStatus } from '../types/index.js';
+import { PULSE_VERSION } from '../version.js';
 
 const server = new Server(
   {
     name: 'pulse-mcp',
-    version: '1.0.0',
+    version: PULSE_VERSION,
   },
   {
     capabilities: {
       tools: {},
     },
+    instructions: `Use tags as epics for big features (e.g., "add-stripe").
+Create tasks and subtasks within tags to complete the epic.
+When asked to "continue work for [feature]", find the related tag and use pulse_next.
+Tasks follow PENDING → INPROGRESS → DONE and typically should be completed in order.`,
   }
 );
 
@@ -214,6 +219,14 @@ const TOOLS: Tool[] = [
           description: 'Show all tags including empty ones (default: false)',
         },
       },
+    },
+  },
+  {
+    name: 'pulse_get_directory',
+    description: 'Get the full path to the .pulse directory',
+    inputSchema: {
+      type: 'object',
+      properties: {},
     },
   },
 ];
@@ -489,6 +502,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: 'text',
               text: result.trim(),
+            },
+          ],
+        };
+      }
+
+      case 'pulse_get_directory': {
+        const pulseDir = taskManager.getPulseDir();
+        return {
+          content: [
+            {
+              type: 'text',
+              text: pulseDir,
             },
           ],
         };

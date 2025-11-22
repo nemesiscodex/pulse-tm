@@ -305,4 +305,12 @@ export class TaskManager {
     
     return true;
   }
+
+  /**
+   * Get the full path to the .pulse directory
+   * @returns The absolute path to the .pulse directory
+   */
+  getPulseDir(): string {
+    return this.storage.getPulseDir();
+  }
 }
