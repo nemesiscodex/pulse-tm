@@ -311,8 +311,15 @@ function BoardApp() {
   // In superCompact mode, sidebar takes full screen
   if (superCompact && showSidebar) {
     return (
-      <box style={{ width: '100%', height: '100%', backgroundColor: colors.bg }}>
+      <box style={{ width: '100%', height: '100%' }}>
         <Sidebar width={width} tags={tags} activeTag={activeTag} focused={focusArea === 'tags'} fullWidth={true} />
+        {modal ? (
+          <Modal
+            modal={modal}
+            onInput={v => setModal(m => (m && m.type !== 'confirmDelete' ? { ...m, value: v } : m))}
+            onSubmit={submitModal}
+          />
+        ) : null}
       </box>
     );
   }
@@ -413,6 +420,7 @@ function BoardApp() {
             borderColor: colors.accent,
             padding: 1,
             maxWidth: 48,
+            maxHeight: '10%',
             flexDirection: 'row',
             zIndex: 100
           }}
@@ -602,15 +610,14 @@ function BoardApp() {
             <text fg={colors.muted}>{' '}</text>
           </box>
         )}
-
-        {modal ? (
-          <Modal
-            modal={modal}
-            onInput={v => setModal(m => (m && m.type !== 'confirmDelete' ? { ...m, value: v } : m))}
-            onSubmit={submitModal}
-          />
-        ) : null}
       </box>
+      {modal ? (
+        <Modal
+          modal={modal}
+          onInput={v => setModal(m => (m && m.type !== 'confirmDelete' ? { ...m, value: v } : m))}
+          onSubmit={submitModal}
+        />
+      ) : null}
     </box>
   );
 }

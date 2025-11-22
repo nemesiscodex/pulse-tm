@@ -22,11 +22,13 @@ export function Modal({ modal, onInput, onSubmit }: ModalProps) {
   return (
     <box style={{
       position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
-      alignItems: 'center', justifyContent: 'center'
+      alignItems: 'center', justifyContent: 'center',
+      zIndex: 999
     }}>
       <box style={{
         width: 60, padding: 1, gap: 1, flexDirection: 'column', backgroundColor: colors.panel,
-        borderStyle: 'double', border: true, borderColor: colors.accent
+        borderStyle: 'double', border: true, borderColor: colors.accent,
+        maxHeight: '80%'
       }}>
         {modal.type === 'confirmDelete' ? (
           <text fg={colors.danger}>Delete task #{modal.taskId}? (Y/N)</text>
@@ -35,39 +37,43 @@ export function Modal({ modal, onInput, onSubmit }: ModalProps) {
             Mark #{modal.taskId} as done and close {modal.pendingSubtasks} open subtasks? (Y/N)
           </text>
           ) : modal.type === 'help' ? (
-            <box style={{ flexDirection: 'column', gap: 1 }}>
-              <text fg={colors.accent}><strong>Keyboard Shortcuts</strong></text>
-              <box style={{ flexDirection: 'column', gap: 1 }}>
-                <text fg={colors.text}><strong>General</strong></text>
-                <text fg={colors.muted}>  ? / h      Show this help</text>
-                <text fg={colors.muted}>  q / Ctrl+C Quit</text>
-                <text fg={colors.muted}>  r          Refresh</text>
+              <>
+                <scrollbox style={{ flexDirection: 'row', flexGrow: 1 }}>
+                  <box style={{ flexDirection: 'column', gap: 1, flexGrow: 1 }}>
+                    <text fg={colors.accent}><strong>Keyboard Shortcuts</strong></text>
+                    <box style={{ flexDirection: 'column', gap: 1 }}>
+                      <text fg={colors.text}><strong>General</strong></text>
+                      <text fg={colors.muted}>  ? / h      Show this help</text>
+                      <text fg={colors.muted}>  q / Ctrl+C Quit</text>
+                      <text fg={colors.muted}>  r          Refresh</text>
 
-                <text fg={colors.text}><strong>Navigation</strong></text>
-                <text fg={colors.muted}>  Arrows     Navigate tasks/columns</text>
-                <text fg={colors.muted}>  Enter      Focus subtasks</text>
-                <text fg={colors.muted}>  Esc        Back / Close modal</text>
-                <text fg={colors.muted}>  b          Toggle Sidebar</text>
-                <text fg={colors.muted}>  [ / ]      Cycle Tags</text>
+                      <text fg={colors.text}><strong>Navigation</strong></text>
+                      <text fg={colors.muted}>  Arrows     Navigate tasks/columns</text>
+                      <text fg={colors.muted}>  Enter      Focus subtasks</text>
+                      <text fg={colors.muted}>  Esc        Back / Close modal</text>
+                      <text fg={colors.muted}>  b          Toggle Sidebar</text>
+                      <text fg={colors.muted}>  [ / ]      Cycle Tags</text>
 
-                <text fg={colors.text}><strong>Tasks</strong></text>
-                <text fg={colors.muted}>  n          New Task</text>
-                <text fg={colors.muted}>  e          Edit Title</text>
-                <text fg={colors.muted}>  d          Edit Description</text>
-                <text fg={colors.muted}>  s          Cycle Status</text>
-                <text fg={colors.muted}>  x          Delete Task</text>
-                <text fg={colors.muted}>  a          Toggle Done Tasks</text>
+                      <text fg={colors.text}><strong>Tasks</strong></text>
+                      <text fg={colors.muted}>  n          New Task</text>
+                      <text fg={colors.muted}>  e          Edit Title</text>
+                      <text fg={colors.muted}>  d          Edit Description</text>
+                      <text fg={colors.muted}>  s          Cycle Status</text>
+                      <text fg={colors.muted}>  x          Delete Task</text>
+                      <text fg={colors.muted}>  a          Toggle Done Tasks</text>
 
-                <text fg={colors.text}><strong>Subtasks</strong></text>
-                <text fg={colors.muted}>  u          New Subtask</text>
-                <text fg={colors.muted}>  i          Edit Subtask</text>
-                <text fg={colors.muted}>  c          Cycle Subtask Status</text>
-                <text fg={colors.muted}>  Shift+Up/Dn Move Subtask</text>
-              </box>
-              <box style={{ marginTop: 1 }}>
+                      <text fg={colors.text}><strong>Subtasks</strong></text>
+                      <text fg={colors.muted}>  u          New Subtask</text>
+                      <text fg={colors.muted}>  i          Edit Subtask</text>
+                      <text fg={colors.muted}>  c          Cycle Subtask Status</text>
+                      <text fg={colors.muted}>  Shift+Up/Dn Move Subtask</text>
+                    </box>
+                  </box>
+                </scrollbox>
+                <box style={{ marginTop: 1, flexShrink: 0 }}>
                 <Pill label="Close" hotkey="Esc" />
               </box>
-            </box>
+              </>
         ) : (
           <>
             <text fg={colors.text}>

@@ -14,6 +14,7 @@ export function Sidebar({ width, tags, activeTag, focused, fullWidth }: SidebarP
   return (
     <box style={{
       width: fullWidth ? '100%' : sidebarWidth,
+      height: '100%',
       flexShrink: 0,
       flexDirection: 'column',
       padding: 1,
