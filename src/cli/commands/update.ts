@@ -1,4 +1,4 @@
-import type { CommandArgs } from '../../types';
+import type { CommandArgs, Task, Subtask } from '../../types';
 import { TaskManager } from '../../core/task-manager';
 
 export async function handleUpdate(args: CommandArgs): Promise<void> {
@@ -29,17 +29,17 @@ async function handleUpdateTask(args: CommandArgs, taskManager: TaskManager, tas
     return;
   }
   
-  const updates: any = {};
+  const updates: Partial<Pick<Task, 'title' | 'description' | 'tag'>> = {};
   
-  if (args.flags.title) {
+  if (typeof args.flags.title === 'string') {
     updates.title = args.flags.title;
   }
   
-  if (args.flags.description !== undefined) {
+  if (typeof args.flags.description === 'string') {
     updates.description = args.flags.description;
   }
   
-  if (args.flags.tag) {
+  if (typeof args.flags.tag === 'string') {
     updates.tag = args.flags.tag;
   }
 
@@ -75,14 +75,10 @@ async function handleUpdateSubtask(args: CommandArgs, taskManager: TaskManager, 
     return;
   }
 
-  const updates: any = {};
+  const updates: Partial<Pick<Subtask, 'title'>> = {};
   
-  if (args.flags.title) {
+  if (typeof args.flags.title === 'string') {
     updates.title = args.flags.title;
-  }
-  
-  if (args.flags.description !== undefined) {
-    updates.description = args.flags.description;
   }
 
   if (Object.keys(updates).length === 0) {

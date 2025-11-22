@@ -1,14 +1,54 @@
 {
-  "name": "pulse",
+  "name": "pulse-tm",
+  "version": "0.1.0",
+  "description": "Terminal task manager with TUI, CLI, and MCP server support",
+  "keywords": [
+    "task-manager",
+    "cli",
+    "tui",
+    "mcp",
+    "productivity",
+    "terminal",
+    "bun"
+  ],
+  "author": "Julio Reyes <nemesiscodex@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nemesiscodex/pulse-tm.git"
+  },
+  "homepage": "https://github.com/nemesiscodex/pulse-tm#readme",
+  "bugs": {
+    "url": "https://github.com/nemesiscodex/pulse-tm/issues"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "src/index.ts",
   "module": "src/index.tsx",
   "type": "module",
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": {
+      "import": "./src/index.ts",
+      "types": "./src/index.ts"
+    }
+  },
   "scripts": {
     "pulse": "bun run src/index.ts",
     "build": "bun build src/index.ts --outdir dist --target bun --minify",
     "prepare": "bun run build && chmod +x dist/index.js",
-    "lint": "bun tsc --noEmit",
-    "lint:eslint": "eslint src --ext .ts,.tsx",
-    "test": "vitest --dir tests"
+    "lint": "bun tsc --noEmit && eslint src --ext .ts,.tsx",
+    "test": "vitest --dir tests",
+    "prepublishOnly": "bun run lint && bun run lint:eslint && bun run test"
   },
   "bin": {
     "pulse": "./dist/index.js"

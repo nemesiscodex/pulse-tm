@@ -1,4 +1,4 @@
-import { render, useKeyboard } from '@opentui/react';
+import { createRoot, useKeyboard } from '@opentui/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { TaskStatus } from '../types';
 import { colors, STATUS_COLORS, STATUS_LABELS, STATUS_SEQUENCE } from './theme';
@@ -10,10 +10,14 @@ import { Column } from './components/Column';
 import { Pill } from './components/Pill';
 import { Modal, type ModalState } from './components/Modal';
 import { sanitizeTagName, isValidTagName } from '../utils/tag-sanitizer';
-import type { ScrollBoxRenderable } from '@opentui/core';
+import { createCliRenderer, type ScrollBoxRenderable } from '@opentui/core';
 
 export async function runDashboard(): Promise<void> {
-  await render(<BoardApp />);
+  // Create a CLI renderer instance using the OpenTUI core utilities.
+  // We then attach our React application tree to that renderer via `createRoot`,
+  // which is the current, supported integration API for @opentui/react.
+  const renderer = await createCliRenderer();
+  createRoot(renderer).render(<BoardApp />);
 }
 
 function BoardApp() {
@@ -494,7 +498,8 @@ function BoardApp() {
             flexShrink: 0,
             border: true,
             borderColor: focusArea === 'subtasks' ? colors.accent : colors.panelAlt,
-            minWidth: 36
+            minWidth: 36,
+            maxHeight: '50%'
           }}>
             <text fg={colors.text}><strong>Details{subtasks.length ? ' / Subtasks' : ''}{focusArea === 'subtasks' ? ' ←' : ''}</strong></text>
             {selectedTask ? (

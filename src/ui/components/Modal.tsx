@@ -78,14 +78,18 @@ export function Modal({ modal, onInput, onSubmit }: ModalProps) {
                     ? 'New Subtask'
                     : modal.type === 'subtaskEdit'
                       ? 'Edit Subtask'
-                      : (modal as any).taskId === -1
-                        ? 'New Task - ' + (modal.type === 'editTitle' ? 'Title' : 'Description')
-                        : 'Edit - ' + (modal.type === 'editTitle' ? 'Title' : 'Description')}
+                      : modal.type === 'editTitle' && modal.taskId === -1
+                        ? 'New Task - Title'
+                        : modal.type === 'editDescription' && modal.taskId === -1
+                          ? 'New Task - Description'
+                          : modal.type === 'editTitle'
+                            ? 'Edit - Title'
+                            : 'Edit - Description'}
               </strong>
             </text>
             <input
               style={{ width: '100%', padding: 1 }}
-              value={(modal as any).value || ''}
+              value={'value' in modal ? modal.value : ''}
               focused
               placeholder={
                 modal.type === 'newTag'

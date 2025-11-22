@@ -52,7 +52,7 @@ export async function handleList(args: CommandArgs): Promise<void> {
         }
         
         if (includeSubtasks && task.subtasks.length > 0) {
-          task.subtasks.forEach((subtask: any) => {
+          task.subtasks.forEach(subtask => {
             const subtaskIcon = getStatusIcon(subtask.status);
             console.log(`   ${subtaskIcon} ${task.id}.${subtask.id}: ${subtask.title}`);
           });
@@ -82,7 +82,7 @@ export async function handleList(args: CommandArgs): Promise<void> {
           }
           
           if (includeSubtasks && task.subtasks.length > 0) {
-            task.subtasks.forEach((subtask: any) => {
+            task.subtasks.forEach(subtask => {
               const subtaskIcon = getStatusIcon(subtask.status);
               console.log(`     ${subtaskIcon} ${task.id}.${subtask.id}: ${subtask.title}`);
             });

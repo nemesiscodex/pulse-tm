@@ -2,9 +2,11 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { TaskManager } from '../../src/core/task-manager';
 import { rmSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
-import { homedir } from 'os';
 
-const TEST_DIR = join(homedir(), '.pulse-test');
+// For open-source friendliness and CI, keep test artifacts inside the project
+// working directory instead of writing into the user's home directory. This
+// avoids permission issues in sandboxed environments and keeps tests hermetic.
+const TEST_DIR = join(process.cwd(), '.pulse-test');
 
 describe('TaskManager', () => {
   let manager: TaskManager;

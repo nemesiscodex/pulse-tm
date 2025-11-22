@@ -23,7 +23,7 @@ const server = new Server(
 const taskManager = new TaskManager();
 
 // Helper function to serialize task for MCP response
-function serializeTask(task: Task): any {
+function serializeTask(task: Task): Record<string, unknown> {
   return {
     id: task.id,
     title: task.title,

@@ -10,6 +10,7 @@ import { handleMcp } from './commands/mcp';
 import { handleTags } from './commands/tags';
 import { handleDelete } from './commands/delete';
 import { handleUi } from './commands/ui';
+import { handleVersion } from './commands/version';
 
 export async function handleCommand(args: CommandArgs): Promise<void> {
   // Check for --help flag on any command
@@ -52,6 +53,11 @@ export async function handleCommand(args: CommandArgs): Promise<void> {
     case 'tags':
       await handleTags(args);
       break;
+    case 'version':
+    case '--version':
+    case '-v':
+      await handleVersion();
+      break;
     case 'help':
     case '--help':
     case '-h':
@@ -81,6 +87,7 @@ COMMANDS:
   ui                    Launch the interactive dashboard
   mcp                   Start MCP server for AI integration
   tags                  List tags
+  version               Show Pulse version
   help                  Show this help message
 
 Use "pulse <command> --help" for detailed help on each command.
@@ -288,6 +295,20 @@ FLAGS:
 EXAMPLES:
   pulse tags
   pulse tags --all
+`);
+      break;
+    case 'version':
+      console.log(`
+USAGE:
+  pulse version
+
+DESCRIPTION:
+  Show the current Pulse CLI version.
+
+EXAMPLES:
+  pulse version
+  pulse --version
+  pulse -v
 `);
       break;
     case 'mcp':

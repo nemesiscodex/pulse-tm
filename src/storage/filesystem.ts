@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 'fs';
 import { join } from 'path';
 import { parse, stringify } from 'yaml';
 import type { TagFile, Task } from '../types';
@@ -75,11 +75,11 @@ export class Storage {
 
   getAllTags(): string[] {
     try {
-      const files = require('fs').readdirSync(this.pulseDir);
+      const files = readdirSync(this.pulseDir);
       return files
         .filter((file: string) => file.endsWith('.yml'))
         .map((file: string) => file.replace('.yml', ''));
-    } catch (error) {
+    } catch {
       return [];
     }
   }
