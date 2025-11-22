@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { ScrollBoxRenderable } from '@opentui/core';
 import type { Task } from '../../types';
-import { colors, STATUS_LABELS } from '../theme';
+import { colors, STATUS_LABELS, STATUS_COLORS } from '../theme';
 
 interface ColumnProps {
   title: string;
@@ -67,19 +67,49 @@ export function Column({ title, color, tasks, focused, selectedIndex, onSelect }
           <box flexDirection="column" flexShrink={0} gap={1}>
             {tasks.map((t, i) => {
               const selected = focused && i === selectedIndex;
+              const subtaskCount = t.subtasks.length;
+              const completedSubtasks = t.subtasks.filter(s => s.status === 'DONE').length;
+
               return (
                 <box
                   key={t.id}
                   flexShrink={0}
-                  style={{ backgroundColor: selected ? colors.info : colors.panelAlt }}
+                  style={{
+                    flexDirection: 'row',
+                    height: 3, // Ensure consistent height for the bar
+                    backgroundColor: colors.panelAlt
+                  }}
                   onMouseDown={() => onSelect(i)}
                 >
-                  <text fg={selected ? '#000000' : colors.text}>
-                    <strong>#{t.id}</strong> {t.title}
-                  </text>
-                  <text fg={selected ? '#000000' : colors.muted}>
-                    [{STATUS_LABELS[t.status]}] {t.subtasks.length > 0 ? ` · [${t.subtasks.filter(s => s.status !== 'DONE').length}/${t.subtasks.length} open]` : ' · [no subtasks]'}
-                  </text>
+                  {/* Selection Bar */}
+                  <box
+                    style={{
+                      width: 1,
+                      height: '100%',
+                      backgroundColor: selected ? colors.warn : 'transparent',
+                      marginRight: 1
+                    }}
+                  />
+
+                  {/* Content Area */}
+                  <box style={{ flexDirection: 'column', flexGrow: 1 }}>
+                    {/* Row 1: Title */}
+                    <text fg={colors.text}>
+                      <strong>#{t.id} {t.title}</strong>
+                    </text>
+
+                    {/* Row 2: Status & Subtasks */}
+                    <box style={{ flexDirection: 'row', gap: 2 }}>
+                      <text fg={STATUS_COLORS[t.status]}>
+                        {STATUS_LABELS[t.status]}
+                      </text>
+                      <text fg={colors.dim}>
+                        {subtaskCount > 0
+                          ? `${completedSubtasks}/${subtaskCount} subtasks`
+                          : 'No subtasks'}
+                      </text>
+                    </box>
+                  </box>
                 </box>
               );
             })}

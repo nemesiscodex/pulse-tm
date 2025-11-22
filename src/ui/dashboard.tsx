@@ -19,8 +19,11 @@ export async function runDashboard(): Promise<void> {
 function BoardApp() {
   const { manager, tags, activeTag, setActiveTag, tasks, refresh } = useTaskData();
   const { width } = useTerminalSize();
+  const stacked = width < 120;
+  const compact = width < 120;
+  const superCompact = width < 120;
   const [showDone, setShowDone] = useState(true);
-  const [showSidebar, setShowSidebar] = useState(width >= 100);
+  const [showSidebar, setShowSidebar] = useState(width >= 120);
   const [sidebarMode, setSidebarMode] = useState<'auto' | 'manual'>('auto');
   const [modal, setModal] = useState<ModalState>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -56,7 +59,7 @@ function BoardApp() {
 
   useEffect(() => {
     if (!subtaskScrollRef.current) return;
-    const targetY = Math.max(0, subtaskSelection * 1); // each subtask row ~1 line
+    const targetY = Math.max(0, subtaskSelection * 3); // each subtask row is 3 lines
     subtaskScrollRef.current.scrollTo({ x: 0, y: targetY });
   }, [subtaskSelection, subtasks.length]);
   useEffect(() => {
@@ -73,12 +76,18 @@ function BoardApp() {
 
   useEffect(() => {
     if (sidebarMode === 'auto') {
-      setShowSidebar(width >= 100);
+      setShowSidebar(width >= 120);
     } else if (width < 80 && showSidebar) {
       // Force hide on extremely small viewports
       setShowSidebar(false);
     }
   }, [width, sidebarMode, showSidebar]);
+
+  useEffect(() => {
+    if (superCompact && showSidebar && focusArea !== 'tags') {
+      setFocusArea('tags');
+    }
+  }, [superCompact, showSidebar, focusArea]);
 
   const applyStatus = useCallback((taskId: number, status: TaskStatus, tag: string, opts?: { completeSubtasks?: boolean }) => {
     manager.updateTaskStatus(taskId, status, tag, opts);
@@ -153,7 +162,7 @@ function BoardApp() {
   const beginDelete = useCallback(() => { if (selectedTask) setModal({ type: 'confirmDelete', taskId: selectedTask.id, tag: selectedTask.tag }); }, [selectedTask]);
 
   const submitModal = useCallback((value: string) => {
-    if (!modal || modal.type === 'confirmDelete' || modal.type === 'confirmComplete') return;
+    if (!modal || modal.type === 'confirmDelete' || modal.type === 'confirmComplete' || modal.type === 'help') return;
     const text = value.trim();
     if (!text) return notify('Text required');
 
@@ -199,6 +208,7 @@ function BoardApp() {
   useKeyboard(key => {
     if (key.ctrl && key.name === 'c') process.exit(0);
     const seq = key.sequence?.toLowerCase?.() ?? '';
+    if (seq === 'q') process.exit(0);
 
     if (modal) {
       if (modal.type === 'confirmDelete') {
@@ -221,10 +231,21 @@ function BoardApp() {
       return;
     }
 
+    // Super compact focus mode escape
+    if (width < 120 && focusArea === 'subtasks' && key.name === 'escape') {
+      setFocusArea('columns');
+      return;
+    }
+
     if (focusArea === 'tags') {
       if (key.name === 'up') return moveTag(-1);
       if (key.name === 'down') return moveTag(1);
-      if (key.name === 'right') { setFocusArea('columns'); notify('Focus: columns'); return; }
+      if (key.name === 'right' || key.name === 'return') {
+        if (superCompact) setShowSidebar(false);
+        setFocusArea('columns');
+        notify('Focus: columns');
+        return;
+      }
     }
     if (focusArea === 'columns' && key.name === 'return') {
       if (selectedTask) {
@@ -275,14 +296,105 @@ function BoardApp() {
     else if (seq === 't') beginNewTag();
     else if (seq === 'a') { setShowDone(v => !v); notify(`Done: ${!showDone ? 'show' : 'hide'}`); }
     else if (seq === 'b') { setSidebarMode('manual'); setShowSidebar(v => !v); notify(`Sidebar: ${!showSidebar ? 'show' : 'hide'}`); }
+    else if (seq === '?' || seq === 'h') setModal({ type: 'help' });
     else if (seq === '[' || seq === ',') moveTag(-1);
     else if (seq === ']' || seq === '.') moveTag(1);
     else if (seq === 'r') refresh();
   });
 
-  const stacked = width < 120;
-  const compact = width < 120;
   const counts = { todo: grouped[0].length, doing: grouped[1].length, done: grouped[2].length };
+
+  // In superCompact mode, sidebar takes full screen
+  if (superCompact && showSidebar) {
+    return (
+      <box style={{ width: '100%', height: '100%', backgroundColor: colors.bg }}>
+        <Sidebar width={width} tags={tags} activeTag={activeTag} focused={focusArea === 'tags'} fullWidth={true} />
+      </box>
+    );
+  }
+
+  // In superCompact mode, if focused on subtasks, show only details
+  if (superCompact && focusArea === 'subtasks' && selectedTask) {
+    return (
+      <box style={{ width: '100%', height: '100%', backgroundColor: colors.bg, flexDirection: 'column', padding: 1 }}>
+        <box style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 1 }}>
+          <text fg={colors.muted}>Focus Mode</text>
+          <Pill label="Back" hotkey="Esc" />
+        </box>
+        <box style={{
+          backgroundColor: colors.panel,
+          padding: 1,
+          gap: 1,
+          flexDirection: 'column',
+          flexGrow: 1,
+          border: true,
+          borderColor: colors.accent
+        }}>
+          <text fg={colors.text}>
+            <strong>#{selectedTask.id} {selectedTask.title}</strong>
+          </text>
+          <text fg={colors.muted}>{selectedTask.description?.trim() ? selectedTask.description : 'No description'}</text>
+          <text fg={colors.text}><strong>Subtasks ({pendingSubtasks}/{subtasks.length} open)</strong></text>
+          {subtasks.length === 0 ? (
+            <text fg={colors.muted}>No subtasks</text>
+          ) : (
+            <scrollbox
+              style={{ flexGrow: 1, flexDirection: 'row' }}
+              paddingRight={1}
+              ref={node => { subtaskScrollRef.current = node as ScrollBoxRenderable | null; }}
+            >
+              <box flexDirection="column" gap={0}>
+                {subtasks.map((st, i) => {
+                  const selected = i === subtaskSelection;
+                  return (
+                    <box
+                      key={st.id}
+                      flexShrink={0}
+                      style={{
+                        flexDirection: 'row',
+                        height: 3,
+                        backgroundColor: colors.panelAlt
+                      }}
+                    >
+                      {/* Selection Bar */}
+                      <box
+                        style={{
+                          width: 1,
+                          height: '100%',
+                          backgroundColor: selected ? colors.warn : 'transparent',
+                          marginRight: 1
+                        }}
+                      />
+
+                      {/* Content Area */}
+                      <box style={{ flexDirection: 'column', flexGrow: 1 }}>
+                        {/* Row 1: Title */}
+                        <text fg={colors.text}>
+                          <strong>#{st.id} {st.title}</strong>
+                        </text>
+
+                        {/* Row 2: Status */}
+                        <text fg={STATUS_COLORS[st.status]}>
+                          {STATUS_LABELS[st.status]}
+                        </text>
+                      </box>
+                    </box>
+                  );
+                })}
+              </box>
+            </scrollbox>
+          )}
+        </box>
+        {modal ? (
+          <Modal
+            modal={modal}
+            onInput={v => setModal(m => (m && m.type !== 'confirmDelete' ? { ...m, value: v } : m))}
+            onSubmit={submitModal}
+          />
+        ) : null}
+      </box>
+    );
+  }
 
   return (
     <box style={{ width: '100%', height: '100%', backgroundColor: colors.bg, flexDirection: 'row' }}>
@@ -297,7 +409,8 @@ function BoardApp() {
             borderColor: colors.accent,
             padding: 1,
             maxWidth: 48,
-            flexDirection: 'row'
+            flexDirection: 'row',
+            zIndex: 100
           }}
         >
           <text fg={colors.text}>{message}</text>
@@ -312,7 +425,11 @@ function BoardApp() {
           <box style={{ flexDirection: 'row', gap: 1, padding: 1 }}>
             <text fg={colors.text}>Tag: <span fg={colors.warn}>{activeTag}</span> | {showDone ? 'All' : 'Open'} | {tasks.length}</text>
           </box>
-          {compact ? (
+          {superCompact ? (
+            <box style={{ flexDirection: 'row', gap: 1, padding: 1 }}>
+              <Pill label="Help" hotkey="?" />
+            </box>
+          ) : compact ? (
             <box style={{ flexDirection: 'column', gap: 1, padding: 1, alignItems: 'center' }}>
               <box style={{ flexDirection: 'row', gap: 1, padding: 1 }}>
                 <Pill label="New Task" hotkey="n" />
@@ -336,23 +453,27 @@ function BoardApp() {
         </box>
 
         <box style={{ flexGrow: 1, flexDirection: stacked ? 'column' : 'row', gap: 1 }}>
-          <Column
-            title={`Pending (${counts.todo})`}
-            color={colors.warn}
-            tasks={visibleColumns[0]}
-            focused={col === 0}
-            selectedIndex={rowIndices[0] ?? 0}
-            onSelect={i => { setFocusArea('columns'); setCol(0); setRowIndices(p => [i, p[1] ?? 0, p[2] ?? 0]); }}
-          />
-          <Column
-            title={`In Progress (${counts.doing})`}
-            color={colors.accent}
-            tasks={visibleColumns[1]}
-            focused={col === 1}
-            selectedIndex={rowIndices[1] ?? 0}
-            onSelect={i => { setFocusArea('columns'); setCol(1); setRowIndices(p => [p[0] ?? 0, i, p[2] ?? 0]); }}
-          />
-          {showDone ? (
+          {(!superCompact || col === 0) && (
+            <Column
+              title={`Pending (${counts.todo})`}
+              color={colors.warn}
+              tasks={visibleColumns[0]}
+              focused={col === 0}
+              selectedIndex={rowIndices[0] ?? 0}
+              onSelect={i => { setFocusArea('columns'); setCol(0); setRowIndices(p => [i, p[1] ?? 0, p[2] ?? 0]); }}
+            />
+          )}
+          {(!superCompact || col === 1) && (
+            <Column
+              title={`In Progress (${counts.doing})`}
+              color={colors.accent}
+              tasks={visibleColumns[1]}
+              focused={col === 1}
+              selectedIndex={rowIndices[1] ?? 0}
+              onSelect={i => { setFocusArea('columns'); setCol(1); setRowIndices(p => [p[0] ?? 0, i, p[2] ?? 0]); }}
+            />
+          )}
+          {showDone && (!superCompact || col === 2) && (
             <Column
               title={`Done (${counts.done})`}
               color={colors.info}
@@ -361,88 +482,121 @@ function BoardApp() {
               selectedIndex={rowIndices[2] ?? 0}
               onSelect={i => { setFocusArea('columns'); setCol(2); setRowIndices(p => [p[0] ?? 0, p[1] ?? 0, i]); }}
             />
-          ) : null}
-        </box>
-
-        <box style={{
-          backgroundColor: colors.panel,
-          padding: 1,
-          gap: 1,
-          flexDirection: 'column',
-          flexShrink: 0,
-          border: true,
-          borderColor: focusArea === 'subtasks' ? colors.accent : colors.panelAlt,
-          minWidth: 36
-        }}>
-          <text fg={colors.text}><strong>Details{subtasks.length ? ' / Subtasks' : ''}{focusArea === 'subtasks' ? ' ←' : ''}</strong></text>
-      {selectedTask ? (
-        <>
-          <text fg={colors.muted}>{selectedTask.description?.trim() ? selectedTask.description : 'No description'}</text>
-          <text fg={colors.text}><strong>Subtasks ({pendingSubtasks}/{subtasks.length} open)</strong></text>
-          {subtasks.length === 0 ? (
-            <text fg={colors.muted}>No subtasks</text>
-          ) : (
-            <scrollbox
-              style={{ maxHeight: 8, flexDirection: 'row' }}
-              paddingRight={1}
-              ref={node => { subtaskScrollRef.current = node as ScrollBoxRenderable | null; }}
-            >
-              <box flexDirection="column" gap={0}>
-                {subtasks.map((st, i) => {
-                  const selected = focusArea === 'subtasks' && i === subtaskSelection;
-                  return (
-                    <text key={st.id} fg={selected ? '#000000' : STATUS_COLORS[st.status]} bg={selected ? STATUS_COLORS[st.status] : undefined}>
-                      [{STATUS_LABELS[st.status]}] {st.title}
-                    </text>
-                  );
-                })}
-              </box>
-            </scrollbox>
-          )}
-        </>
-          ) : (
-            <text fg={colors.muted}>Select a task to see details</text>
           )}
         </box>
 
-        <box style={{ backgroundColor: colors.panel, padding: 1, justifyContent: 'space-between', alignItems: 'center' }}>
-          <box style={{ flexDirection: 'column', gap: 1 }}>
-            {compact ? (
-              <box style={{ flexDirection: 'column', gap: 1 }}>
+        {!superCompact && (
+          <box style={{
+            backgroundColor: colors.panel,
+            padding: 1,
+            gap: 1,
+            flexDirection: 'column',
+            flexShrink: 0,
+            border: true,
+            borderColor: focusArea === 'subtasks' ? colors.accent : colors.panelAlt,
+            minWidth: 36
+          }}>
+            <text fg={colors.text}><strong>Details{subtasks.length ? ' / Subtasks' : ''}{focusArea === 'subtasks' ? ' ←' : ''}</strong></text>
+            {selectedTask ? (
+              <>
+                <text fg={colors.muted}>{selectedTask.description?.trim() ? selectedTask.description : 'No description'}</text>
+                <text fg={colors.text}><strong>Subtasks ({pendingSubtasks}/{subtasks.length} open)</strong></text>
+                {subtasks.length === 0 ? (
+                  <text fg={colors.muted}>No subtasks</text>
+                ) : (
+                  <scrollbox
+                      style={{ flexGrow: 1, flexDirection: 'row' }}
+                      paddingRight={1}
+                      ref={node => { subtaskScrollRef.current = node as ScrollBoxRenderable | null; }}
+                    >
+                      <box flexDirection="column" gap={0}>
+                        {subtasks.map((st, i) => {
+                          const selected = focusArea === 'subtasks' && i === subtaskSelection;
+                          return (
+                            <box
+                              key={st.id}
+                              flexShrink={0}
+                              style={{
+                                flexDirection: 'row',
+                                height: 3,
+                                backgroundColor: colors.panelAlt
+                              }}
+                            >
+                              {/* Selection Bar */}
+                              <box
+                                style={{
+                                  width: 1,
+                                  height: '100%',
+                                  backgroundColor: selected ? colors.warn : 'transparent',
+                                  marginRight: 1
+                                }}
+                              />
+
+                              {/* Content Area */}
+                              <box style={{ flexDirection: 'column', flexGrow: 1 }}>
+                                {/* Row 1: Title */}
+                                <text fg={colors.text}>
+                                  <strong>#{st.id} {st.title}</strong>
+                                </text>
+
+                                {/* Row 2: Status */}
+                                <text fg={STATUS_COLORS[st.status]}>
+                                  {STATUS_LABELS[st.status]}
+                                </text>
+                              </box>
+                            </box>
+                          );
+                        })}
+                    </box>
+                  </scrollbox>
+                )}
+              </>
+            ) : (
+              <text fg={colors.muted}>Select a task to see details</text>
+            )}
+          </box>
+        )}
+
+        {!superCompact && (
+          <box style={{ backgroundColor: colors.panel, padding: 1, justifyContent: 'space-between', alignItems: 'center' }}>
+            <box style={{ flexDirection: 'column', gap: 1 }}>
+              {compact ? (
+                <box style={{ flexDirection: 'column', gap: 1 }}>
+                  <box style={{ flexDirection: 'row', gap: 1 }}>
+                    <Pill label="Move" hotkey="Arrows" />
+                    <Pill label="Change Tag" hotkey="[ / ]" />
+                    <Pill label="Sidebar" hotkey="b" />
+                  </box>
+                  <box style={{ flexDirection: 'row', gap: 1 }}>
+                    <Pill label="Edit" hotkey="e" />
+                    <Pill label="Description" hotkey="d" />
+                    <Pill label="Delete" hotkey="x" fg="#ffffff" bg={colors.danger} />
+                  </box>
+                </box>
+              ) : (
                 <box style={{ flexDirection: 'row', gap: 1 }}>
                   <Pill label="Move" hotkey="Arrows" />
                   <Pill label="Change Tag" hotkey="[ / ]" />
-                  <Pill label="Sidebar" hotkey="b" />
-                </box>
-                <box style={{ flexDirection: 'row', gap: 1 }}>
                   <Pill label="Edit" hotkey="e" />
-                  <Pill label="Description" hotkey="d" />
+                  <Pill label="Desc" hotkey="d" />
+                  <Pill label="Sidebar" hotkey="b" />
                   <Pill label="Delete" hotkey="x" fg="#ffffff" bg={colors.danger} />
                 </box>
-              </box>
-            ) : (
-              <box style={{ flexDirection: 'row', gap: 1 }}>
-                <Pill label="Move" hotkey="Arrows" />
-                <Pill label="Change Tag" hotkey="[ / ]" />
-                <Pill label="Edit" hotkey="e" />
-                <Pill label="Desc" hotkey="d" />
-                <Pill label="Sidebar" hotkey="b" />
-                <Pill label="Delete" hotkey="x" fg="#ffffff" bg={colors.danger} />
-              </box>
-            )}
-            {selectedTask ? (
-              <box style={{ flexDirection: 'row', gap: 1, marginTop: 1 }}>
-                <Pill label="Focus Subtasks" hotkey="Enter" />
-                <Pill label="Add Subtask" hotkey="u" />
-                <Pill label="Edit Subtask" hotkey="i" />
-                <Pill label="Status" hotkey="c" />
-                <Pill label="Reorder" hotkey="Shift+↑↓" />
-                <Pill label="Delete Subtask" hotkey="Del/Backspace" fg="#ffffff" bg={colors.danger} />
-              </box>
-            ) : null}
+              )}
+              {selectedTask ? (
+                <box style={{ flexDirection: 'row', gap: 1, marginTop: 1 }}>
+                  <Pill label="Focus Subtasks" hotkey="Enter" />
+                  <Pill label="Add Subtask" hotkey="u" />
+                  <Pill label="Edit Subtask" hotkey="i" />
+                  <Pill label="Status" hotkey="c" />
+                  <Pill label="Reorder" hotkey="Shift+↑↓" />
+                  <Pill label="Delete Subtask" hotkey="Del/Backspace" fg="#ffffff" bg={colors.danger} />
+                </box>
+              ) : null}
+            </box>
+            <text fg={colors.muted}>{' '}</text>
           </box>
-          <text fg={colors.muted}>{' '}</text>
-        </box>
+        )}
 
         {modal ? (
           <Modal

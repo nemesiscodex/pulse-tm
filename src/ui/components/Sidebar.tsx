@@ -6,13 +6,14 @@ interface SidebarProps {
   tags: string[];
   activeTag: string;
   focused: boolean;
+  fullWidth?: boolean;
 }
 
-export function Sidebar({ width, tags, activeTag, focused }: SidebarProps) {
+export function Sidebar({ width, tags, activeTag, focused, fullWidth }: SidebarProps) {
   const sidebarWidth = width < 100 ? 24 : width < 140 ? 32 : 40;
   return (
     <box style={{
-      width: sidebarWidth,
+      width: fullWidth ? '100%' : sidebarWidth,
       flexShrink: 0,
       flexDirection: 'column',
       padding: 1,
