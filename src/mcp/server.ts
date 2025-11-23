@@ -113,7 +113,7 @@ const TOOLS: Tool[] = [
         status: {
           type: 'string',
           enum: ['PENDING', 'INPROGRESS', 'DONE'],
-          description: 'New status (required)',
+          description: 'New status (required). Must be one of: PENDING, INPROGRESS, DONE',
         },
       },
       required: ['taskId', 'status'],
@@ -167,7 +167,7 @@ const TOOLS: Tool[] = [
         status: {
           type: 'string',
           enum: ['PENDING', 'INPROGRESS', 'DONE'],
-          description: 'New status (required)',
+          description: 'New status (required). Must be one of: PENDING, INPROGRESS, DONE',
         },
       },
       required: ['parentTaskId', 'subtaskId', 'status'],
@@ -231,7 +231,9 @@ export async function startMcpServer(workingDir?: string): Promise<void> {
       instructions: `Use tags as epics for big features (e.g., "add-stripe").
 Create tasks and subtasks within tags to complete the epic.
 When asked to "continue work for [feature]", find the related tag and use pulse_next.
-Tasks follow PENDING → INPROGRESS → DONE and typically should be completed in order.`,
+Tasks follow PENDING → INPROGRESS → DONE and typically should be completed in order.
+The best way to use the tools is to take the next task, set it to INPROGRESS, then once the task is done change it to DONE.
+Using these states (PENDING, INPROGRESS, DONE) is mandatory.`,
     }
   );
 
@@ -324,6 +326,18 @@ Tasks follow PENDING → INPROGRESS → DONE and typically should be completed i
           taskId: number;
           status: TaskStatus;
         };
+
+        if (!['PENDING', 'INPROGRESS', 'DONE'].includes(status)) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Invalid status: "${status}". Must be one of: PENDING, INPROGRESS, DONE`,
+              },
+            ],
+            isError: true,
+          };
+        }
         
         const task = taskManager.updateTaskStatus(taskId, status);
         if (!task) {
@@ -415,6 +429,18 @@ Tasks follow PENDING → INPROGRESS → DONE and typically should be completed i
           subtaskId: number;
           status: TaskStatus;
         };
+
+        if (!['PENDING', 'INPROGRESS', 'DONE'].includes(status)) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Invalid status: "${status}". Must be one of: PENDING, INPROGRESS, DONE`,
+              },
+            ],
+            isError: true,
+          };
+        }
         
         const subtask = taskManager.updateSubtaskStatus(parentTaskId, subtaskId, status);
         if (!subtask) {
