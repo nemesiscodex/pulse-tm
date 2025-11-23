@@ -15,12 +15,15 @@ interface ColumnProps {
 export function Column({ title, color, tasks, focused, selectedIndex, onSelect }: ColumnProps) {
   const scrollRef = useRef<ScrollBoxRenderable | null>(null);
 
+  // Force re-render when tasks change to prevent ghosting artifacts
+  const listKey = tasks.map(t => `${t.id}:${t.status}`).join(',');
+
   useEffect(() => {
     if (!scrollRef.current) return;
     const rowHeight = 3; // approx 2 text lines + gap
     const targetY = Math.max(0, selectedIndex * rowHeight - 1);
     scrollRef.current.scrollTo({ x: 0, y: targetY });
-  }, [selectedIndex, tasks.length]);
+  }, [selectedIndex, tasks.length, listKey]);
 
   return (
     <box style={{
@@ -53,7 +56,7 @@ export function Column({ title, color, tasks, focused, selectedIndex, onSelect }
         </scrollbox>
       ) : (
         <scrollbox
-          key="list"
+            key={`list-${listKey}`}
           stickyScroll={true}
           style={{ flexGrow: 1, flexDirection: 'row' }}
           ref={node => { scrollRef.current = node as ScrollBoxRenderable | null; }}
@@ -64,7 +67,7 @@ export function Column({ title, color, tasks, focused, selectedIndex, onSelect }
             }
           }}
         >
-            <box flexDirection="column" flexShrink={0}>
+            <box flexDirection="column" flexShrink={0} style={{ width: '100%', backgroundColor: colors.panelAlt }}>
             {tasks.map((t, i) => {
               const selected = focused && i === selectedIndex;
               const subtaskCount = t.subtasks.length;

@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import * as fs from 'fs';
 import { TaskManager } from '../../core/task-manager';
 import type { Task } from '../../types';
 import { sanitizeTagName, isValidTagName } from '../../utils/tag-sanitizer';
@@ -37,10 +38,30 @@ export function useTaskData(workingDir?: string) {
     }
   }, [manager, activeTag, setActiveTag]);
 
-  // Initial load
+  // Initial load and file watching
   useEffect(() => {
     refresh();
-  }, [refresh]);
+
+    const pulseDir = manager.getPulseDir();
+    let debounceTimer: NodeJS.Timeout;
+
+    // Watch the .pulse directory for changes
+    // We use fs.watch which is efficient and event-driven
+    const watcher = fs.watch(pulseDir, { recursive: false }, (eventType: string, filename: string | Buffer | null) => {
+      if (!filename || typeof filename !== 'string' || !filename.endsWith('.yml')) return;
+
+      // Debounce the refresh to avoid multiple updates for a single save
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        refresh();
+      }, 100);
+    });
+
+    return () => {
+      watcher.close();
+      clearTimeout(debounceTimer);
+    };
+  }, [refresh, manager]);
 
   const safeActiveTag = isValidTagName(sanitizeTagName(activeTag)) ? sanitizeTagName(activeTag) : 'base';
   const tasks = byTag[safeActiveTag] ?? [];
