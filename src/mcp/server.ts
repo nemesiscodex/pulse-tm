@@ -239,27 +239,7 @@ Tasks follow PENDING → INPROGRESS → DONE and typically should be completed i
   const projectRoot = getProjectPath(workingDir, process.cwd());
   const taskManager = new TaskManager(projectRoot);
 
-  // Helper function to serialize task for MCP response
-  function serializeTask(task: Task): Record<string, unknown> {
-    return {
-      id: task.id,
-      title: task.title,
-      description: task.description,
-      status: task.status,
-      tag: task.tag,
-      order: task.order,
-      subtasks: task.subtasks.map(st => ({
-        id: st.id,
-        title: st.title,
-        status: st.status,
-        order: st.order,
-        createdAt: st.createdAt.toISOString(),
-        updatedAt: st.updatedAt.toISOString()
-      })),
-      createdAt: task.createdAt.toISOString(),
-      updatedAt: task.updatedAt.toISOString()
-    };
-  }
+
 
   // Handle list tools request
   server.setRequestHandler(ListToolsRequestSchema, async () => {
