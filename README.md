@@ -4,7 +4,7 @@
 
 Pulse is a simple terminal-based task manager designed for developers who live in the command line. It combines a CLI, a TUI, and an MCP server to integrate seamlessly with AI agents.
 
-![Pulse TUI](docs/images/tui.png)
+![Pulse TUI](https://github.com/user-attachments/assets/d04fc4bf-7087-42f2-88e2-3305a58cd0ce)
 
 ## The Vibe
 
