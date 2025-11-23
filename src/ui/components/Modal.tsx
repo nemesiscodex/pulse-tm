@@ -5,6 +5,7 @@ export type ModalState =
   | { type: 'editTitle'; taskId: number; tag: string; value: string }
   | { type: 'editDescription'; taskId: number; tag: string; value: string }
   | { type: 'confirmDelete'; taskId: number; tag: string }
+  | { type: 'confirmDeleteSubtask'; taskId: number; tag: string; subtaskId: number }
   | { type: 'confirmComplete'; taskId: number; tag: string; pendingSubtasks: number; nextStatus: 'DONE' }
   | { type: 'subtaskEdit'; taskId: number; tag: string; subtaskId: number; value: string }
   | { type: 'subtaskNew'; taskId: number; tag: string; value: string }
@@ -32,6 +33,8 @@ export function Modal({ modal, onInput, onSubmit }: ModalProps) {
       }}>
         {modal.type === 'confirmDelete' ? (
           <text fg={colors.danger}>Delete task #{modal.taskId}? (Y/N)</text>
+        ) : modal.type === 'confirmDeleteSubtask' ? (
+          <text fg={colors.danger}>Delete subtask #{modal.subtaskId}? (Y/N)</text>
         ) : modal.type === 'confirmComplete' ? (
           <text fg={colors.warn}>
             Mark #{modal.taskId} as done and close {modal.pendingSubtasks} open subtasks? (Y/N)

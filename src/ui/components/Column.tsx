@@ -86,7 +86,7 @@ export function Column({ title, color, tasks, focused, selectedIndex, onSelect }
                     style={{
                       width: 1,
                       height: '100%',
-                      backgroundColor: selected ? colors.warn : 'transparent',
+                      backgroundColor: selected ? STATUS_COLORS[t.status] : colors.dim,
                       marginRight: 1
                     }}
                   />

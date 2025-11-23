@@ -114,11 +114,8 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
     if (!selectedTask || subtasks.length === 0) return;
     const st = subtasks[subtaskSelection];
     if (!st) return;
-    const ok = manager.deleteSubtask(selectedTask.id, st.id);
-    notify(ok ? `Deleted subtask #${st.id}` : 'Subtask not found');
-    setSubtaskIndex(i => Math.max(0, Math.min(i, subtasks.length - 2)));
-    refresh();
-  }, [manager, notify, refresh, selectedTask, subtasks, subtaskSelection, setSubtaskIndex]);
+    setModal({ type: 'confirmDeleteSubtask', taskId: selectedTask.id, tag: selectedTask.tag, subtaskId: st.id });
+  }, [selectedTask, subtasks, subtaskSelection]);
 
   const moveSubtask = useCallback((delta: number) => {
     if (!selectedTask || subtasks.length === 0) return;
@@ -166,7 +163,7 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
   const beginDelete = useCallback(() => { if (selectedTask) setModal({ type: 'confirmDelete', taskId: selectedTask.id, tag: selectedTask.tag }); }, [selectedTask]);
 
   const submitModal = useCallback((value: string) => {
-    if (!modal || modal.type === 'confirmDelete' || modal.type === 'confirmComplete' || modal.type === 'help') return;
+    if (!modal || modal.type === 'confirmDelete' || modal.type === 'confirmDeleteSubtask' || modal.type === 'confirmComplete' || modal.type === 'help') return;
     const text = value.trim();
     if (!text) return notify('Text required');
 
@@ -231,6 +228,16 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
         } else if (seq === 'n' || key.name === 'escape') setModal(null);
         return;
       }
+      if (modal.type === 'confirmDeleteSubtask') {
+        if (seq === 'y' || key.name === 'return') {
+          const ok = manager.deleteSubtask(modal.taskId, modal.subtaskId);
+          notify(ok ? `Deleted subtask #${modal.subtaskId}` : 'Subtask not found');
+          setSubtaskIndex(i => Math.max(0, Math.min(i, subtasks.length - 2)));
+          setModal(null);
+          refresh();
+        } else if (seq === 'n' || key.name === 'escape') setModal(null);
+        return;
+      }
       if (key.name === 'escape') return setModal(null);
       return;
     }
@@ -274,7 +281,7 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
       if (seq === 'u') { beginSubtaskNew(); return; }
       if (seq === 'i') { beginSubtaskEdit(); return; }
       if (key.name === 'backspace' || key.name === 'delete') { deleteSubtask(); return; }
-      if (key.name === 'left') { setFocusArea('columns'); notify('Focus: columns'); return; }
+      if (key.name === 'left' || key.name === 'escape' || key.name === 'return') { setFocusArea('columns'); notify('Focus: columns'); return; }
     }
 
     switch (key.name) {
@@ -316,7 +323,7 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
         {modal ? (
           <Modal
             modal={modal}
-            onInput={v => setModal(m => (m && m.type !== 'confirmDelete' ? { ...m, value: v } : m))}
+            onInput={v => setModal(m => (m && m.type !== 'confirmDelete' && m.type !== 'confirmDeleteSubtask' ? { ...m, value: v } : m))}
             onSubmit={submitModal}
           />
         ) : null}
@@ -512,12 +519,16 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
             <text fg={colors.text}><strong>Details{subtasks.length ? ' / Subtasks' : ''}{focusArea === 'subtasks' ? ' ←' : ''}</strong></text>
             {selectedTask ? (
               <>
+                <text fg={colors.text}>
+                  <strong>#{selectedTask.id} {selectedTask.title}</strong>
+                </text>
                 <text fg={colors.muted}>{selectedTask.description?.trim() ? selectedTask.description : 'No description'}</text>
                 <text fg={colors.text}><strong>Subtasks ({pendingSubtasks}/{subtasks.length} open)</strong></text>
-                {subtasks.length === 0 ? (
-                  <text fg={colors.muted}>No subtasks</text>
-                ) : (
-                  <scrollbox
+                {focusArea === 'subtasks' ? (
+                  subtasks.length === 0 ? (
+                    <text fg={colors.muted}>No subtasks</text>
+                  ) : (
+                    <scrollbox
                       style={{ flexGrow: 1, flexDirection: 'row' }}
                       paddingRight={1}
                       ref={node => { subtaskScrollRef.current = node as ScrollBoxRenderable | null; }}
@@ -540,7 +551,7 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
                                 style={{
                                   width: 1,
                                   height: '100%',
-                                  backgroundColor: selected ? colors.warn : 'transparent',
+                                  backgroundColor: selected ? STATUS_COLORS[st.status] : colors.dim,
                                   marginRight: 1
                                 }}
                               />
@@ -560,8 +571,11 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
                             </box>
                           );
                         })}
-                    </box>
-                  </scrollbox>
+                        </box>
+                      </scrollbox>
+                  )
+                ) : (
+                  <text fg={colors.dim}>Press Enter to view subtasks</text>
                 )}
               </>
             ) : (
@@ -614,7 +628,7 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
       {modal ? (
         <Modal
           modal={modal}
-          onInput={v => setModal(m => (m && m.type !== 'confirmDelete' ? { ...m, value: v } : m))}
+          onInput={v => setModal(m => (m && m.type !== 'confirmDelete' && m.type !== 'confirmDeleteSubtask' ? { ...m, value: v } : m))}
           onSubmit={submitModal}
         />
       ) : null}
