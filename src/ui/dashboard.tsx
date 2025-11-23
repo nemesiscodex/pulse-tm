@@ -10,7 +10,7 @@ import { Column } from './components/Column';
 import { Pill } from './components/Pill';
 import { Modal, type ModalState } from './components/Modal';
 import { sanitizeTagName, isValidTagName } from '../utils/tag-sanitizer';
-import { createCliRenderer, type ScrollBoxRenderable } from '@opentui/core';
+import { createCliRenderer, type ScrollBoxRenderable, strikethrough, bold, t as styled } from '@opentui/core';
 
 export async function runDashboard(workingDir?: string): Promise<void> {
   // Create a CLI renderer instance using the OpenTUI core utilities.
@@ -45,11 +45,20 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
     tasks.filter(t => t.status === 'DONE')
   ] as const, [tasks]);
 
-  const visibleColumns = useMemo(() => [
-    grouped[0],
-    grouped[1],
-    showDone ? grouped[2] : []
-  ] as const, [grouped, showDone]);
+  const visibleColumns = useMemo(() => {
+    if (compact) {
+      // In compact mode, show all tasks in a single column, sorted by ID for stability
+      // Filter out DONE tasks if showDone is false
+      const filtered = showDone ? tasks : tasks.filter(t => t.status !== 'DONE');
+      const allTasks = [...filtered].sort((a, b) => a.id - b.id);
+      return [allTasks];
+    }
+    return [
+      grouped[0],
+      grouped[1],
+      showDone ? grouped[2] : []
+    ] as const;
+  }, [grouped, showDone, compact, tasks]);
 
   const { col, rowIndices, setCol, setRowIndices, subtaskIndex, setSubtaskIndex, moveRow, moveCol, selectedTask } = useSelection(visibleColumns);
   const subtasks = selectedTask?.subtasks ?? [];
@@ -67,10 +76,10 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
     subtaskScrollRef.current.scrollTo({ x: 0, y: targetY });
   }, [subtaskSelection, subtasks.length]);
   useEffect(() => {
-    if (!showDone && col > 1) {
+    if (!compact && !showDone && col > 1) {
       setCol(1);
     }
-  }, [showDone, col, setCol]);
+  }, [showDone, col, setCol, compact]);
 
   useEffect(() => {
     if (!showSidebar && focusArea === 'tags') {
@@ -291,12 +300,12 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
         if (key.meta || key.option) return moveTag(-1);
         if (focusArea === 'subtasks') { setFocusArea('columns'); notify('Focus: columns'); return; }
         if (col === 0 && showSidebar) { setFocusArea('tags'); notify('Focus: tags'); return; }
-        return moveCol(-1, showDone ? 3 : 2);
+        return moveCol(-1, compact ? 1 : (showDone ? 3 : 2));
       case 'right':
         if (key.meta || key.option) return moveTag(1);
         if (focusArea === 'tags') { setFocusArea('columns'); notify('Focus: columns'); return; }
         if (focusArea === 'subtasks') return;
-        return moveCol(1, showDone ? 3 : 2);
+        return moveCol(1, compact ? 1 : (showDone ? 3 : 2));
     }
 
     if (seq === 's') cycle();
@@ -387,9 +396,14 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
                       {/* Content Area */}
                       <box style={{ flexDirection: 'column', flexGrow: 1 }}>
                         {/* Row 1: Title */}
-                        <text fg={colors.text}>
-                          <strong>#{st.id} {st.title}</strong>
-                        </text>
+                        <text
+                          fg={st.status === 'DONE' ? colors.muted : colors.text}
+                          content={
+                            st.status === 'DONE'
+                              ? styled`${strikethrough(bold(`#${st.id} ${st.title}`))}`
+                              : styled`${bold(`#${st.id} ${st.title}`)}`
+                          }
+                        />
 
                         {/* Row 2: Status */}
                         <text fg={STATUS_COLORS[st.status]}>
@@ -472,35 +486,48 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
         </box>
 
         <box style={{ flexGrow: 1, flexDirection: stacked ? 'column' : 'row', gap: 1 }}>
-          {(!superCompact || col === 0) && (
+          {compact ? (
             <Column
-              title={`Pending (${counts.todo})`}
-              color={colors.warn}
+              title={`All Tasks (${tasks.length})`}
+              color={colors.text}
               tasks={visibleColumns[0]}
               focused={col === 0}
               selectedIndex={rowIndices[0] ?? 0}
-              onSelect={i => { setFocusArea('columns'); setCol(0); setRowIndices(p => [i, p[1] ?? 0, p[2] ?? 0]); }}
+              onSelect={i => { setFocusArea('columns'); setCol(0); setRowIndices(p => { const n = [...p]; n[0] = i; return n; }); }}
             />
-          )}
-          {(!superCompact || col === 1) && (
-            <Column
-              title={`In Progress (${counts.doing})`}
-              color={colors.accent}
-              tasks={visibleColumns[1]}
-              focused={col === 1}
-              selectedIndex={rowIndices[1] ?? 0}
-              onSelect={i => { setFocusArea('columns'); setCol(1); setRowIndices(p => [p[0] ?? 0, i, p[2] ?? 0]); }}
-            />
-          )}
-          {showDone && (!superCompact || col === 2) && (
-            <Column
-              title={`Done (${counts.done})`}
-              color={colors.info}
-              tasks={visibleColumns[2]}
-              focused={col === 2}
-              selectedIndex={rowIndices[2] ?? 0}
-              onSelect={i => { setFocusArea('columns'); setCol(2); setRowIndices(p => [p[0] ?? 0, p[1] ?? 0, i]); }}
-            />
+          ) : (
+            <>
+                {(!superCompact || col === 0) && (
+                  <Column
+                    title={`Pending (${counts.todo})`}
+                    color={colors.text}
+                    tasks={visibleColumns[0]}
+                    focused={col === 0}
+                    selectedIndex={rowIndices[0] ?? 0}
+                    onSelect={i => { setFocusArea('columns'); setCol(0); setRowIndices(p => { const n = [...p]; n[0] = i; return n; }); }}
+                  />
+                )}
+                {(!superCompact || col === 1) && (
+                  <Column
+                    title={`In Progress (${counts.doing})`}
+                    color={colors.warn}
+                    tasks={visibleColumns[1]}
+                    focused={col === 1}
+                    selectedIndex={rowIndices[1] ?? 0}
+                    onSelect={i => { setFocusArea('columns'); setCol(1); setRowIndices(p => { const n = [...p]; n[1] = i; return n; }); }}
+                  />
+                )}
+                {showDone && (!superCompact || col === 2) && (
+                  <Column
+                    title={`Done (${counts.done})`}
+                    color={colors.accent}
+                    tasks={visibleColumns[2]}
+                    focused={col === 2}
+                    selectedIndex={rowIndices[2] ?? 0}
+                    onSelect={i => { setFocusArea('columns'); setCol(2); setRowIndices(p => { const n = [...p]; n[2] = i; return n; }); }}
+                  />
+                )}
+              </>
           )}
         </box>
 
@@ -543,7 +570,7 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
                               style={{
                                 flexDirection: 'row',
                                 height: 3,
-                                backgroundColor: colors.panelAlt
+                                backgroundColor: selected ? colors.panelSelected : colors.panelAlt
                               }}
                             >
                               {/* Selection Bar */}
@@ -559,9 +586,14 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
                               {/* Content Area */}
                               <box style={{ flexDirection: 'column', flexGrow: 1 }}>
                                 {/* Row 1: Title */}
-                                <text fg={colors.text}>
-                                  <strong>#{st.id} {st.title}</strong>
-                                </text>
+                                <text
+                                  fg={st.status === 'DONE' ? colors.muted : colors.text}
+                                  content={
+                                    st.status === 'DONE'
+                                      ? styled`${strikethrough(bold(`#${st.id} ${st.title}`))}`
+                                      : styled`${bold(`#${st.id} ${st.title}`)}`
+                                  }
+                                />
 
                                 {/* Row 2: Status */}
                                 <text fg={STATUS_COLORS[st.status]}>

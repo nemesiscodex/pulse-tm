@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import type { ScrollBoxRenderable } from '@opentui/core';
+import { type ScrollBoxRenderable, strikethrough, bold, t as styled } from '@opentui/core';
 import type { Task } from '../../types';
 import { colors, STATUS_LABELS, STATUS_COLORS } from '../theme';
 
@@ -64,7 +64,7 @@ export function Column({ title, color, tasks, focused, selectedIndex, onSelect }
             }
           }}
         >
-          <box flexDirection="column" flexShrink={0} gap={1}>
+            <box flexDirection="column" flexShrink={0}>
             {tasks.map((t, i) => {
               const selected = focused && i === selectedIndex;
               const subtaskCount = t.subtasks.length;
@@ -77,7 +77,7 @@ export function Column({ title, color, tasks, focused, selectedIndex, onSelect }
                   style={{
                     flexDirection: 'row',
                     height: 3, // Ensure consistent height for the bar
-                    backgroundColor: colors.panelAlt
+                    backgroundColor: selected ? colors.panelSelected : colors.panelAlt
                   }}
                   onMouseDown={() => onSelect(i)}
                 >
@@ -94,9 +94,14 @@ export function Column({ title, color, tasks, focused, selectedIndex, onSelect }
                   {/* Content Area */}
                   <box style={{ flexDirection: 'column', flexGrow: 1 }}>
                     {/* Row 1: Title */}
-                    <text fg={colors.text}>
-                      <strong>#{t.id} {t.title}</strong>
-                    </text>
+                    <text
+                      fg={t.status === 'DONE' ? colors.muted : colors.text}
+                      content={
+                        t.status === 'DONE'
+                          ? styled`${strikethrough(bold(`#${t.id} ${t.title.length > 100 ? t.title.slice(0, 100) + '…' : t.title}`))}`
+                          : styled`${bold(`#${t.id} ${t.title.length > 100 ? t.title.slice(0, 100) + '…' : t.title}`)}`
+                      }
+                    />
 
                     {/* Row 2: Status & Subtasks */}
                     <box style={{ flexDirection: 'row', gap: 2 }}>

@@ -4,6 +4,7 @@ export const colors = {
   bg: '#0f1115',
   panel: '#151922',
   panelAlt: '#10141b',
+  panelSelected: '#13171eff',
   accent: '#06D6A0',
   info: '#118AB2',
   warn: '#FFD166',
@@ -20,9 +21,9 @@ export const STATUS_LABELS: Record<TaskStatus, string> = {
 };
 
 export const STATUS_COLORS: Record<TaskStatus, string> = {
-  PENDING: colors.warn,
-  INPROGRESS: colors.accent,
-  DONE: colors.info
+  PENDING: colors.text,
+  INPROGRESS: colors.warn,
+  DONE: colors.accent
 };
 
 export const STATUS_SEQUENCE: TaskStatus[] = ['PENDING', 'INPROGRESS', 'DONE'];
