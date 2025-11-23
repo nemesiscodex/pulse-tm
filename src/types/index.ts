@@ -31,4 +31,5 @@ export interface CommandArgs {
   args: string[];
   flags: Record<string, string | boolean>;
   tag?: string;
+  workingDir?: string;
 }

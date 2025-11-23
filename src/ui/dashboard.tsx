@@ -12,16 +12,16 @@ import { Modal, type ModalState } from './components/Modal';
 import { sanitizeTagName, isValidTagName } from '../utils/tag-sanitizer';
 import { createCliRenderer, type ScrollBoxRenderable } from '@opentui/core';
 
-export async function runDashboard(): Promise<void> {
+export async function runDashboard(workingDir?: string): Promise<void> {
   // Create a CLI renderer instance using the OpenTUI core utilities.
   // We then attach our React application tree to that renderer via `createRoot`,
   // which is the current, supported integration API for @opentui/react.
   const renderer = await createCliRenderer();
-  createRoot(renderer).render(<BoardApp />);
+  createRoot(renderer).render(<BoardApp workingDir={workingDir} />);
 }
 
-function BoardApp() {
-  const { manager, tags, activeTag, setActiveTag, tasks, refresh } = useTaskData();
+function BoardApp({ workingDir }: { workingDir?: string }) {
+  const { manager, tags, activeTag, setActiveTag, tasks, refresh } = useTaskData(workingDir);
   const { width } = useTerminalSize();
   const stacked = width < 120;
   const compact = width < 120;

@@ -3,11 +3,11 @@ import { TaskManager } from '../../core/task-manager';
 import type { Task } from '../../types';
 import { sanitizeTagName, isValidTagName } from '../../utils/tag-sanitizer';
 
-export function useTaskData() {
+export function useTaskData(workingDir?: string) {
   // Lazy initialization of TaskManager
   const managerRef = useRef<TaskManager | null>(null);
   if (!managerRef.current) {
-    managerRef.current = new TaskManager();
+    managerRef.current = new TaskManager(workingDir);
   }
   const manager = managerRef.current;
 

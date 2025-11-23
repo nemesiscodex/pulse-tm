@@ -1,5 +1,5 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 'fs';
-import { join } from 'path';
+import { join, resolve, basename } from 'path';
 import { parse, stringify } from 'yaml';
 import type { TagFile, Task } from '../types';
 import { sanitizeTagName } from '../utils/tag-sanitizer';
@@ -8,7 +8,19 @@ export class Storage {
   private pulseDir: string;
 
   constructor(baseDir: string = process.cwd()) {
-    this.pulseDir = join(baseDir, '.pulse');
+    // Normalize the base directory to prevent .pulse/.pulse nesting
+    // If baseDir already ends with .pulse, use it directly; otherwise join with .pulse
+    const normalized = resolve(baseDir);
+    const dirName = basename(normalized);
+    
+    if (dirName === '.pulse') {
+      // If baseDir is already .pulse, use it directly to avoid .pulse/.pulse
+      this.pulseDir = normalized;
+    } else {
+      // Normal case: join baseDir with .pulse
+      this.pulseDir = join(normalized, '.pulse');
+    }
+    
     this.ensurePulseDir();
   }
 

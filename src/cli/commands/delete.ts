@@ -2,7 +2,7 @@ import type { CommandArgs } from '../../types';
 import { TaskManager } from '../../core/task-manager';
 
 export async function handleDelete(args: CommandArgs): Promise<void> {
-  const taskManager = new TaskManager();
+  const taskManager = new TaskManager(args.workingDir);
 
   if (args.args.length === 0) {
     console.error('Error: Task ID is required.');

@@ -3,7 +3,7 @@ import { TaskManager } from '../../core/task-manager';
 import type { TaskStatus } from '../../types';
 
 export async function handleShow(args: CommandArgs): Promise<void> {
-  const taskManager = new TaskManager();
+  const taskManager = new TaskManager(args.workingDir);
 
   if (args.args.length === 0) {
     throw new Error('Task ID is required. Usage: pulse show <id> [--tag <tag>]');

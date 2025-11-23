@@ -8,24 +8,7 @@ import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { TaskManager } from '../core/task-manager.js';
 import type { Task, TaskStatus } from '../types/index.js';
 import { PULSE_VERSION } from '../version.js';
-
-const server = new Server(
-  {
-    name: 'pulse-mcp',
-    version: PULSE_VERSION,
-  },
-  {
-    capabilities: {
-      tools: {},
-    },
-    instructions: `Use tags as epics for big features (e.g., "add-stripe").
-Create tasks and subtasks within tags to complete the epic.
-When asked to "continue work for [feature]", find the related tag and use pulse_next.
-Tasks follow PENDING → INPROGRESS → DONE and typically should be completed in order.`,
-  }
-);
-
-const taskManager = new TaskManager();
+import { getProjectPath } from '../utils/project-path.js';
 
 // Helper function to serialize task for MCP response
 function serializeTask(task: Task): Record<string, unknown> {
@@ -231,19 +214,66 @@ const TOOLS: Tool[] = [
   },
 ];
 
-// Handle list tools request
-server.setRequestHandler(ListToolsRequestSchema, async () => {
-  return {
-    tools: TOOLS,
-  };
-});
+/**
+ * Start the MCP server with an optional working directory override
+ * @param workingDir - Optional working directory path. If not provided, auto-detects from process.cwd()
+ */
+export async function startMcpServer(workingDir?: string): Promise<void> {
+  const server = new Server(
+    {
+      name: 'pulse-mcp',
+      version: PULSE_VERSION,
+    },
+    {
+      capabilities: {
+        tools: {},
+      },
+      instructions: `Use tags as epics for big features (e.g., "add-stripe").
+Create tasks and subtasks within tags to complete the epic.
+When asked to "continue work for [feature]", find the related tag and use pulse_next.
+Tasks follow PENDING → INPROGRESS → DONE and typically should be completed in order.`,
+    }
+  );
 
-// Handle tool execution
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const { name, arguments: args } = request.params;
+  // Resolve project root: use workingDir if provided, otherwise auto-detect from process.cwd()
+  const projectRoot = getProjectPath(workingDir, process.cwd());
+  const taskManager = new TaskManager(projectRoot);
 
-  try {
-    switch (name) {
+  // Helper function to serialize task for MCP response
+  function serializeTask(task: Task): Record<string, unknown> {
+    return {
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      status: task.status,
+      tag: task.tag,
+      order: task.order,
+      subtasks: task.subtasks.map(st => ({
+        id: st.id,
+        title: st.title,
+        status: st.status,
+        order: st.order,
+        createdAt: st.createdAt.toISOString(),
+        updatedAt: st.updatedAt.toISOString()
+      })),
+      createdAt: task.createdAt.toISOString(),
+      updatedAt: task.updatedAt.toISOString()
+    };
+  }
+
+  // Handle list tools request
+  server.setRequestHandler(ListToolsRequestSchema, async () => {
+    return {
+      tools: TOOLS,
+    };
+  });
+
+  // Handle tool execution
+  server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    const { name, arguments: args } = request.params;
+
+    try {
+      switch (name) {
       case 'pulse_add': {
         const { title, description, tag } = args as {
           title: string;
@@ -532,15 +562,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       ],
     };
   }
-});
+  });
 
-async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   // Don't log to stderr as it might interfere with MCP communication
 }
-
-main().catch((error) => {
-  console.error('Server error:', error);
-  process.exit(1);
-});

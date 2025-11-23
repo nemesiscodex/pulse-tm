@@ -9,7 +9,7 @@ export async function handleUpdate(args: CommandArgs): Promise<void> {
   }
 
   const target = args.args[0]!;
-  const taskManager = new TaskManager();
+  const taskManager = new TaskManager(args.workingDir);
   
   // Check if it's a subtask (format: task.subtask)
   const parts = target.split('.');

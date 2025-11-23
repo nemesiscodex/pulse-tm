@@ -45,10 +45,10 @@ export async function handleCommand(args: CommandArgs): Promise<void> {
       await handleDelete(args);
       break;
     case 'ui':
-      await handleUi();
+      await handleUi(args);
       break;
     case 'mcp':
-      await handleMcp();
+      await handleMcp(args);
       break;
     case 'tags':
       await handleTags(args);
@@ -75,6 +75,9 @@ Pulse - Terminal Task Manager
 USAGE:
   pulse <command> [arguments] [flags]
 
+GLOBAL FLAGS:
+  --working-dir, -w <path>  Override project root directory (default: auto-detect from .git)
+
 COMMANDS:
   add                   Create a new task
   list                  List all tasks
@@ -95,6 +98,7 @@ Use "pulse <command> --help" for detailed help on each command.
 EXAMPLES:
   pulse add "Fix bug" -d "Critical issue in login" --tag bug
   pulse list --tag feature
+  pulse --working-dir /path/to/project list
   pulse status 1 done
   pulse next --tag frontend
   pulse subtask add 1 "Write tests"

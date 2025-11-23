@@ -1,242 +1,76 @@
 # Pulse - Terminal Task Manager
 
-A powerful terminal-based task and project management tool designed for developers and power users who prefer working in the command line. Pulse provides a simple yet powerful interface for managing tasks with hierarchical subtasks, tags, and status tracking.
+> **Stop context switching. Manage your projects where you code.**
 
-## Features
+Pulse is a simple terminal-based task manager designed for developers who live in the command line. It combines a CLI, a TUI, and an MCP server to integrate seamlessly with AI agents.
 
-- **Task Management**: Create, update, and delete tasks with titles, descriptions, and tags
-- **Status Tracking**: Track tasks through PENDING, INPROGRESS, and DONE states
-- **Tag System**: Organize tasks by tags (defaults to "base" tag)
-- **Subtasks**: Create hierarchical subtasks with independent status tracking
-- **Interactive TUI**: Beautiful terminal user interface for browsing and managing tasks
-- **MCP Server**: Model Context Protocol server for AI assistant integration
-- **CLI Commands**: Full-featured command-line interface
+![Pulse TUI](docs/images/tui.png)
 
-## Installation
+## The Vibe
 
-### Using Bun (Recommended)
+I built Pulse for myself. Honestly, I wasn't happy with the existing tools. They were either too complex, mess up my projects, or just didn't feel right. I wanted something simple that let me group tasks with tags, move them through states, and most importantly, **pause my work and pick it up days later without missing context.**
+
+This tool is 90% vibecoded. It's designed to feel good to use.
+
+> [!WARNING]
+> **Use at your own risk.** While I use this daily, it is a personal project built for vibes first, stability second. Expect bugs, breaking changes, and occasional chaos.
+
+## Why Pulse?
+
+- 🧠 **Stay in Flow**: Keep a record of your tasks across sessions. Start a big feature today, pause, and pick it up days later without missing context.
+- 🛠️ **Flexible**: Control it your way—use the simple CLI, the interactive TUI, or let your AI agent handle it via MCP.
+- � **Version Controlled**: Tasks are stored in simple YAML files. Commit them with your code or keep them separate—it's up to you.
+
+## Quick Start
+
+
+### 1. Install & Usage
+
+**For Humans (CLI & TUI):**
+Install globally to use the terminal interface.
 
 ```bash
 bun install -g pulse-tm
+pulse ui   # Launch the dashboard
+pulse help # See all commands
 ```
 
-### Using npm
+**For Agents (MCP):**
+No global install needed. Just configure your agent (Claude/Cursor) to run:
 
 ```bash
-npm install -g pulse-tm
-```
-
-**Note**: This package requires Bun runtime. After installing via npm, ensure you have [Bun](https://bun.sh) installed on your system.
-
-## Usage
-
-Pulse supports three main usage modes:
-
-### 1. Command Line Interface (CLI)
-
-```bash
-# Create a new task
-pulse add "Fix bug in login" -d "Critical issue affecting users" --tag bug
-
-# List all tasks
-pulse list
-
-# List tasks by tag
-pulse list --tag feature
-
-# List tasks by status
-pulse list --status pending
-
-# Update a task
-pulse update 1 -d "Updated description" --tag bug
-
-# Change task status
-pulse status 1 inprogress
-
-# Get next task to work on
-pulse next
-
-# Get next task from specific tag
-pulse next --tag frontend
-
-# Show detailed task information
-pulse show 1
-
-# Delete a task
-pulse delete 1
-
-# List all tags
-pulse tags
-```
-
-### 2. Interactive TUI Dashboard
-
-Launch the interactive dashboard:
-
-```bash
-pulse ui
-```
-
-**Keyboard Shortcuts**:
-- Arrow keys: Navigate tasks
-- `Enter`: Focus on subtasks
-- `e`/`d`: Edit task
-- `s`: Cycle task status
-- `x`: Delete task
-- `a`: Toggle completed tasks visibility
-- `t`: Toggle tabs
-- `q`: Quit
-
-### 3. MCP Server (for AI Integration)
-
-Start the MCP server for AI assistant integration:
-
-```bash
-# Using npx (installed from npm)
-npx pulse-tm mcp
-
-# Using bunx (installed with Bun)
 bunx pulse-tm mcp
 ```
 
-This starts a [Model Context Protocol](https://modelcontextprotocol.io) server that lets AI assistants read and update your tasks.
+### 2. The "Agentic" Workflow
 
-## Commands Reference
+Pulse shines when paired with AI agents (like Cursor or Claude). Here is the suggested workflow:
 
-### `pulse add`
-Create a new task with optional description and tag.
+#### Scenario 1: Planning
+Ask your agent to read a PRD and plan the work.
 
-```bash
-pulse add "Task title" -d "Description" --tag feature
-```
+> **Prompt:** "Read PRD.md. Use Pulse to create a plan and generate tasks for this feature. Tag them with 'feature-x'."
 
-### `pulse list`
-List all tasks, optionally filtered by tag and status.
+**What happens:** The agent uses the MCP server to create a structured list of tasks in Pulse, organized by the tag you specified.
 
-```bash
-pulse list --tag bug --status pending --subtasks
-```
+#### Scenario 2: Execution
+Ask your agent to start working.
 
-### `pulse update`
-Update an existing task's title, description, or tag.
+> **Prompt:** "Work on the next task in 'feature-x'."
 
-```bash
-pulse update 1 -d "New description" --tag feature
-```
+**What happens:** The agent reads the next pending task, writes the code to solve it, and marks the task as done in Pulse.
 
-### `pulse status`
-Change a task's status.
+## Documentation
 
-```bash
-pulse status 1 done
-```
+- **[CLI Reference](docs/CLI.md)**: Full command-line interface documentation.
+- **[TUI Dashboard](docs/TUI.md)**: Keyboard shortcuts and usage for the interactive dashboard.
+- **[MCP Server](docs/MCP.md)**: How to set up Pulse with Claude Desktop or Cursor.
+- **[Development](docs/DEVELOPMENT.md)**: Contributing to Pulse.
 
-### `pulse next`
-Get the next task to work on (prioritizes in-progress, then pending).
+## Demo
 
-```bash
-pulse next --tag frontend
-```
-
-### `pulse subtask`
-Manage subtasks for a given task.
-
-```bash
-pulse subtask add 1 "Write tests"
-pulse subtask status 1 1 done
-```
-
-### `pulse show`
-Show detailed information about a specific task.
-
-```bash
-pulse show 1 --tag feature
-```
-
-### `pulse delete`
-Delete a task permanently.
-
-```bash
-pulse delete 1 --tag bug
-```
-
-### `pulse tags`
-List all tags or tags with open tasks.
-
-```bash
-pulse tags --all
-```
-
-## Development
-
-If you want to hack on Pulse locally, you’ll need:
-
-- [Bun](https://bun.sh) **1.0.0+** (runtime and package manager)
-
-Install dependencies:
-
-```bash
-bun install
-```
-
-Run the CLI directly (useful while developing commands):
-
-```bash
-bun run src/index.ts -- help
-```
-
-Run the TUI dashboard directly:
-
-```bash
-bun run src/index.tsx
-```
-
-Build and link the CLI globally for local testing:
-
-```bash
-bun run build
-bun link
-```
-
-Type-check and lint:
-
-```bash
-# Strict TypeScript type-check (no emit) and ESLint (TypeScript + project style)
-bun run lint
-```
-
-Run tests:
-
-```bash
-bun run test
-```
-
-## Requirements
-
-- **Bun**: Version 1.0.0 or higher
-- **Node.js**: Not supported (this package uses Bun-specific features)
-
-## Data Storage
-
-Tasks are stored locally in YAML format:
-- Location: `.pulse/` directory in your home directory or project root
-- One file per tag: `.pulse/<tag>.yml`
-- Base tag stored as: `.pulse/base.yml`
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.  
-See `CONTRIBUTING.md` for setup instructions, coding conventions, and how to run the checks locally.  
-See `CODE_OF_CONDUCT.md` for community expectations and reporting guidelines.
+![Pulse Demo Video Placeholder](https://placehold.co/600x400?text=Pulse+Demo+Video)
 
 ## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
-
-## Repository
-
-[https://github.com/nemesiscodex/pulse-tm](https://github.com/nemesiscodex/pulse-tm)
-
-## Support
-
-For issues and feature requests, please use the [GitHub Issues](https://github.com/nemesiscodex/pulse-tm/issues) page.

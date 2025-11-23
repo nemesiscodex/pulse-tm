@@ -3,7 +3,7 @@ import { TaskManager } from '../../core/task-manager';
 import prompts from 'prompts';
 
 export async function handleAdd(args: CommandArgs): Promise<void> {
-  const taskManager = new TaskManager();
+  const taskManager = new TaskManager(args.workingDir);
   
   let title: string;
   let description: string | undefined;

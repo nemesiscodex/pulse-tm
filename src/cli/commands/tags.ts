@@ -2,7 +2,7 @@ import type { CommandArgs } from '../../types';
 import { TaskManager } from '../../core/task-manager';
 
 export async function handleTags(args: CommandArgs): Promise<void> {
-  const taskManager = new TaskManager();
+  const taskManager = new TaskManager(args.workingDir);
 
   try {
     const allTags = taskManager.getAllTags();

@@ -34,6 +34,7 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 .DS_Store
 
 .pulse/
+.cursor/
 
 # reference repo
 opencode/

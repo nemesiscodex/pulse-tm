@@ -3,7 +3,7 @@ import { TaskManager } from '../../core/task-manager';
 import type { TaskStatus, Task } from '../../types';
 
 export async function handleList(args: CommandArgs): Promise<void> {
-  const taskManager = new TaskManager();
+  const taskManager = new TaskManager(args.workingDir);
   
   const tag = args.flags.t as string || args.flags.tag as string;
   const status = (args.flags.s as string || args.flags.status as string) as TaskStatus;

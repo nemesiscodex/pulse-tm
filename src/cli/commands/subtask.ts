@@ -10,7 +10,7 @@ export async function handleSubtask(args: CommandArgs): Promise<void> {
   }
 
   const action = args.args[0]!;
-  const taskManager = new TaskManager();
+  const taskManager = new TaskManager(args.workingDir);
 
   switch (action) {
     case 'add':

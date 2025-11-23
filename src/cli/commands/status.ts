@@ -28,7 +28,7 @@ export async function handleStatus(args: CommandArgs): Promise<void> {
     return;
   }
 
-  const taskManager = new TaskManager();
+  const taskManager = new TaskManager(args.workingDir);
 
   try {
     const updatedTask = taskManager.updateTaskStatus(taskId, status, args.tag);
