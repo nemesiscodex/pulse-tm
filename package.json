@@ -1,6 +1,6 @@
 {
   "name": "pulse-tm",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Terminal task manager with TUI, CLI, and MCP server support",
   "keywords": [
     "task-manager",
