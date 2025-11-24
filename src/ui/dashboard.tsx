@@ -114,7 +114,7 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
     if (!st) return;
     const i = STATUS_SEQUENCE.indexOf(st.status);
     const next = STATUS_SEQUENCE[(i + 1) % STATUS_SEQUENCE.length]!;
-    manager.updateSubtaskStatus(selectedTask.id, st.id, next);
+    manager.updateSubtaskStatus(selectedTask.id, st.id, next, selectedTask.tag);
     refresh();
     notify(`Subtask #${st.id} -> ${STATUS_LABELS[next]}`);
   }, [selectedTask, subtasks, subtaskSelection, manager, refresh, notify]);
@@ -131,7 +131,7 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
     const from = subtaskSelection;
     const to = Math.max(0, Math.min(subtasks.length - 1, from + delta));
     if (from === to) return;
-    const result = manager.reorderSubtasks(selectedTask.id, from, to);
+    const result = manager.reorderSubtasks(selectedTask.id, from, to, selectedTask.tag);
     if (result) {
       setSubtaskIndex(to);
       refresh();
@@ -197,11 +197,11 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
       manager.updateTask(modal.taskId, { description: text });
       notify(`Saved desc for #${modal.taskId}`);
     } else if (modal.type === 'subtaskNew') {
-      const st = manager.addSubtask(modal.taskId, text);
+      const st = manager.addSubtask(modal.taskId, text, modal.tag);
       notify(st ? `Added subtask #${st.id}` : 'Subtask not added');
       setSubtaskIndex(subtasks.length); // jump to new
     } else if (modal.type === 'subtaskEdit') {
-      const updated = manager.updateSubtask(modal.taskId, modal.subtaskId, { title: text });
+      const updated = manager.updateSubtask(modal.taskId, modal.subtaskId, { title: text }, modal.tag);
       notify(updated ? `Updated subtask #${modal.subtaskId}` : 'Subtask not found');
     }
     setModal(null);
@@ -239,7 +239,7 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
       }
       if (modal.type === 'confirmDeleteSubtask') {
         if (seq === 'y' || key.name === 'return') {
-          const ok = manager.deleteSubtask(modal.taskId, modal.subtaskId);
+          const ok = manager.deleteSubtask(modal.taskId, modal.subtaskId, modal.tag);
           notify(ok ? `Deleted subtask #${modal.subtaskId}` : 'Subtask not found');
           setSubtaskIndex(i => Math.max(0, Math.min(i, subtasks.length - 2)));
           setModal(null);

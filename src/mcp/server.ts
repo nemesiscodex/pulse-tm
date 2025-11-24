@@ -146,6 +146,10 @@ const TOOLS: Tool[] = [
           type: 'string',
           description: 'Subtask title (required)',
         },
+        tag: {
+          type: 'string',
+          description: 'Parent task tag (optional)',
+        },
       },
       required: ['parentTaskId', 'title'],
     },
@@ -168,6 +172,10 @@ const TOOLS: Tool[] = [
           type: 'string',
           enum: ['PENDING', 'INPROGRESS', 'DONE'],
           description: 'New status (required). Must be one of: PENDING, INPROGRESS, DONE',
+        },
+        tag: {
+          type: 'string',
+          description: 'Parent task tag (optional)',
         },
       },
       required: ['parentTaskId', 'subtaskId', 'status'],
@@ -389,12 +397,13 @@ Using these states (PENDING, INPROGRESS, DONE) is mandatory.`,
       }
 
       case 'pulse_subtask_add': {
-        const { parentTaskId, title } = args as {
+        const { parentTaskId, title, tag } = args as {
           parentTaskId: number;
           title: string;
+          tag?: string;
         };
         
-        const subtask = taskManager.addSubtask(parentTaskId, title);
+        const subtask = taskManager.addSubtask(parentTaskId, title, tag);
         if (!subtask) {
           return {
             content: [
@@ -424,10 +433,11 @@ Using these states (PENDING, INPROGRESS, DONE) is mandatory.`,
       }
 
       case 'pulse_subtask_status': {
-        const { parentTaskId, subtaskId, status } = args as {
+        const { parentTaskId, subtaskId, status, tag } = args as {
           parentTaskId: number;
           subtaskId: number;
           status: TaskStatus;
+          tag?: string;
         };
 
         if (!['PENDING', 'INPROGRESS', 'DONE'].includes(status)) {
@@ -442,7 +452,7 @@ Using these states (PENDING, INPROGRESS, DONE) is mandatory.`,
           };
         }
         
-        const subtask = taskManager.updateSubtaskStatus(parentTaskId, subtaskId, status);
+        const subtask = taskManager.updateSubtaskStatus(parentTaskId, subtaskId, status, tag);
         if (!subtask) {
           return {
             content: [

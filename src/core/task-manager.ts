@@ -148,12 +148,12 @@ export class TaskManager {
     return null;
   }
 
-  addSubtask(parentTaskId: number, title: string): Subtask | null {
-    const found = this.storage.findTask(parentTaskId);
+  addSubtask(parentTaskId: number, title: string, tag?: string): Subtask | null {
+    const found = this.storage.findTask(parentTaskId, tag);
     if (!found) return null;
 
-    const { task, tag } = found;
-    const tagFile = this.storage.loadTagFile(tag);
+    const { task, tag: foundTag } = found;
+    const tagFile = this.storage.loadTagFile(foundTag);
     const taskIndex = tagFile.tasks.findIndex(t => t.id === parentTaskId);
     
     if (taskIndex === -1) return null;
@@ -172,17 +172,17 @@ export class TaskManager {
     task.updatedAt = now;
     
     tagFile.tasks[taskIndex] = task;
-    this.storage.saveTagFile(tag, tagFile);
+    this.storage.saveTagFile(foundTag, tagFile);
     
     return subtask;
   }
 
-  updateSubtaskStatus(parentTaskId: number, subtaskId: number, status: TaskStatus): Subtask | null {
-    const found = this.storage.findTask(parentTaskId);
+  updateSubtaskStatus(parentTaskId: number, subtaskId: number, status: TaskStatus, tag?: string): Subtask | null {
+    const found = this.storage.findTask(parentTaskId, tag);
     if (!found) return null;
 
-    const { task, tag } = found;
-    const tagFile = this.storage.loadTagFile(tag);
+    const { task, tag: foundTag } = found;
+    const tagFile = this.storage.loadTagFile(foundTag);
     const taskIndex = tagFile.tasks.findIndex(t => t.id === parentTaskId);
     
     if (taskIndex === -1) return null;
@@ -198,17 +198,17 @@ export class TaskManager {
     task.updatedAt = new Date();
     
     tagFile.tasks[taskIndex] = task;
-    this.storage.saveTagFile(tag, tagFile);
+    this.storage.saveTagFile(foundTag, tagFile);
     
     return updatedSubtask;
   }
 
-  deleteSubtask(parentTaskId: number, subtaskId: number): boolean {
-    const found = this.storage.findTask(parentTaskId);
+  deleteSubtask(parentTaskId: number, subtaskId: number, tag?: string): boolean {
+    const found = this.storage.findTask(parentTaskId, tag);
     if (!found) return false;
 
-    const { task, tag } = found;
-    const tagFile = this.storage.loadTagFile(tag);
+    const { task, tag: foundTag } = found;
+    const tagFile = this.storage.loadTagFile(foundTag);
     const taskIndex = tagFile.tasks.findIndex(t => t.id === parentTaskId);
     if (taskIndex === -1) return false;
 
@@ -221,16 +221,16 @@ export class TaskManager {
     task.updatedAt = new Date();
 
     tagFile.tasks[taskIndex] = task;
-    this.storage.saveTagFile(tag, tagFile);
+    this.storage.saveTagFile(foundTag, tagFile);
     return true;
   }
 
-  reorderSubtasks(parentTaskId: number, fromIndex: number, toIndex: number): Subtask[] | null {
-    const found = this.storage.findTask(parentTaskId);
+  reorderSubtasks(parentTaskId: number, fromIndex: number, toIndex: number, tag?: string): Subtask[] | null {
+    const found = this.storage.findTask(parentTaskId, tag);
     if (!found) return null;
 
-    const { task, tag } = found;
-    const tagFile = this.storage.loadTagFile(tag);
+    const { task, tag: foundTag } = found;
+    const tagFile = this.storage.loadTagFile(foundTag);
     const taskIndex = tagFile.tasks.findIndex(t => t.id === parentTaskId);
     if (taskIndex === -1) return null;
 
@@ -246,7 +246,7 @@ export class TaskManager {
     task.updatedAt = now;
 
     tagFile.tasks[taskIndex] = task;
-    this.storage.saveTagFile(tag, tagFile);
+    this.storage.saveTagFile(foundTag, tagFile);
     return task.subtasks;
   }
 
@@ -264,12 +264,12 @@ export class TaskManager {
     return found ? found.task : null;
   }
 
-  updateSubtask(parentTaskId: number, subtaskId: number, updates: Partial<Pick<Subtask, 'title'>>): Subtask | null {
-    const found = this.storage.findTask(parentTaskId);
+  updateSubtask(parentTaskId: number, subtaskId: number, updates: Partial<Pick<Subtask, 'title'>>, tag?: string): Subtask | null {
+    const found = this.storage.findTask(parentTaskId, tag);
     if (!found) return null;
 
-    const { task, tag } = found;
-    const tagFile = this.storage.loadTagFile(tag);
+    const { task, tag: foundTag } = found;
+    const tagFile = this.storage.loadTagFile(foundTag);
     const taskIndex = tagFile.tasks.findIndex(t => t.id === parentTaskId);
     
     if (taskIndex === -1) return null;
@@ -285,7 +285,7 @@ export class TaskManager {
     task.updatedAt = new Date();
     
     tagFile.tasks[taskIndex] = task;
-    this.storage.saveTagFile(tag, tagFile);
+    this.storage.saveTagFile(foundTag, tagFile);
     
     return updatedSubtask;
   }
