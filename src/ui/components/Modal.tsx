@@ -10,6 +10,7 @@ export type ModalState =
   | { type: 'subtaskEdit'; taskId: number; tag: string; subtaskId: number; value: string }
   | { type: 'subtaskNew'; taskId: number; tag: string; value: string }
   | { type: 'newTag'; value: string }
+  | { type: 'newTagDesc'; tagName: string; value: string }
   | { type: 'help' }
   | null;
 
@@ -32,7 +33,9 @@ export function Modal({ modal, onInput, onSubmit }: ModalProps) {
         maxHeight: '80%'
       }}>
         {modal.type === 'confirmDelete' ? (
-          <text fg={colors.danger}>Delete task #{modal.taskId}? (Y/N)</text>
+          <text fg={colors.danger}>
+            {modal.taskId === -1 ? `Delete tag "${modal.tag}" and all tasks? (Y/N)` : `Delete task #${modal.taskId}? (Y/N)`}
+          </text>
         ) : modal.type === 'confirmDeleteSubtask' ? (
           <text fg={colors.danger}>Delete subtask #{modal.subtaskId}? (Y/N)</text>
         ) : modal.type === 'confirmComplete' ? (
@@ -82,8 +85,10 @@ export function Modal({ modal, onInput, onSubmit }: ModalProps) {
             <text fg={colors.text}>
               <strong>
                 {modal.type === 'newTag'
-                  ? 'New Tag'
-                  : modal.type === 'subtaskNew'
+                          ? 'New Tag - Name'
+                          : modal.type === 'newTagDesc'
+                            ? 'New Tag - Description'
+                            : modal.type === 'subtaskNew'
                     ? 'New Subtask'
                     : modal.type === 'subtaskEdit'
                       ? 'Edit Subtask'
@@ -103,7 +108,9 @@ export function Modal({ modal, onInput, onSubmit }: ModalProps) {
               placeholder={
                 modal.type === 'newTag'
                   ? 'Enter tag name...'
-                  : modal.type === 'subtaskNew'
+                  : modal.type === 'newTagDesc'
+                    ? 'Enter tag description (optional)...'
+                    : modal.type === 'subtaskNew'
                     ? 'Enter subtask title...'
                     : 'Enter text...'
               }

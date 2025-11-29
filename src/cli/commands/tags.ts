@@ -12,7 +12,9 @@ export async function handleTags(args: CommandArgs): Promise<void> {
       console.log('All tags:');
       for (const tag of allTags) {
         const tasks = taskManager.listTasks(tag);
-        console.log(`  ${tag} (${tasks.length} tasks)`);
+        const details = taskManager.getTagDetails(tag);
+        const desc = details?.description ? ` - ${details.description}` : '';
+        console.log(`  ${tag} (${tasks.length} tasks)${desc}`);
       }
     } else {
       console.log('Tags with open tasks:');
@@ -24,7 +26,9 @@ export async function handleTags(args: CommandArgs): Promise<void> {
         );
         
         if (openTasks.length > 0) {
-          console.log(`  ${tag} (${openTasks.length} open)`);
+          const details = taskManager.getTagDetails(tag);
+          const desc = details?.description ? ` - ${details.description}` : '';
+          console.log(`  ${tag} (${openTasks.length} open)${desc}`);
           foundOpenTasks = true;
         }
       }

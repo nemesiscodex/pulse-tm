@@ -33,6 +33,11 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
   const [message, setMessage] = useState<string | null>(null);
   const [focusArea, setFocusArea] = useState<'columns' | 'tags' | 'subtasks'>('columns');
 
+  // Get tag details
+  const tagDetails = useMemo(() => {
+    return manager.getTagDetails(activeTag);
+  }, [manager, activeTag, tasks]); // tasks dependency to refresh when tasks change (though description changes might need explicit refresh)
+
   const notify = useCallback((m: string) => {
     setMessage(m);
     setTimeout(() => setMessage(null), 2000);
@@ -170,6 +175,7 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
   const beginEdit = useCallback(() => { if (selectedTask) setModal({ type: 'editTitle', taskId: selectedTask.id, tag: selectedTask.tag, value: selectedTask.title }); }, [selectedTask]);
   const beginDesc = useCallback(() => { if (selectedTask) setModal({ type: 'editDescription', taskId: selectedTask.id, tag: selectedTask.tag, value: selectedTask.description ?? '' }); }, [selectedTask]);
   const beginDelete = useCallback(() => { if (selectedTask) setModal({ type: 'confirmDelete', taskId: selectedTask.id, tag: selectedTask.tag }); }, [selectedTask]);
+  const beginDeleteTag = useCallback(() => { if (activeTag && activeTag !== 'base') setModal({ type: 'confirmDelete', taskId: -1, tag: activeTag }); }, [activeTag]); // Reusing confirmDelete with taskId -1 for tag deletion
 
   const submitModal = useCallback((value: string) => {
     if (!modal || modal.type === 'confirmDelete' || modal.type === 'confirmDeleteSubtask' || modal.type === 'confirmComplete' || modal.type === 'help') return;
@@ -182,11 +188,16 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
       if (tags.includes(normalized)) {
         setActiveTag(normalized);
         notify(`Switched to tag "${normalized}"`);
+        setModal(null);
       } else {
-        manager.createTag(normalized);
-        setActiveTag(normalized);
-        notify(`Created tag "${normalized}"`);
+        // Proceed to step 2: Description
+        setModal({ type: 'newTagDesc', tagName: normalized, value: '' });
+        return; // Don't close modal yet
       }
+    } else if (modal.type === 'newTagDesc') {
+      manager.createTag(modal.tagName, text);
+      setActiveTag(modal.tagName);
+      notify(`Created tag "${modal.tagName}"`);
     } else if (modal.taskId === -1) {
       const t = manager.createTask(text, undefined, activeTag);
       notify(`Created #${t.id}`);
@@ -223,8 +234,16 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
     if (modal) {
       if (modal.type === 'confirmDelete') {
         if (seq === 'y' || key.name === 'return') {
-          const ok = manager.deleteTask(modal.taskId, modal.tag);
-          notify(ok ? `Deleted #${modal.taskId}` : 'Not found');
+          if (modal.taskId === -1) {
+            // Delete Tag
+            const ok = manager.deleteTag(modal.tag);
+            notify(ok ? `Deleted tag "${modal.tag}"` : 'Error deleting tag');
+            if (ok) setActiveTag('base'); // Switch to base after deletion
+          } else {
+          // Delete Task
+            const ok = manager.deleteTask(modal.taskId, modal.tag);
+            notify(ok ? `Deleted #${modal.taskId}` : 'Not found');
+          }
           setModal(null);
           refresh();
         } else if (seq === 'n' || key.name === 'escape') setModal(null);
@@ -310,7 +329,10 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
 
     if (seq === 's') cycle();
     else if (seq === 'e') beginEdit();
-    else if (seq === 'd') beginDesc();
+    else if (seq === 'd') {
+      if (key.shift) beginDeleteTag();
+      else beginDesc();
+    }
     else if (seq === 'x') beginDelete();
     else if (seq === 'n') beginNew();
     else if (seq === 't') beginNewTag();
@@ -456,7 +478,7 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
       <box style={{ flexGrow: 1, flexDirection: 'column', gap: 1, padding: 1 }}>
         <box style={{ backgroundColor: colors.panel, justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, flexDirection: 'row' }}>
           <box style={{ flexDirection: 'row', gap: 1, padding: 1 }}>
-            <text fg={colors.text}>Tag: <span fg={colors.warn}>{activeTag}</span> | {showDone ? 'All' : 'Open'} | {tasks.length}</text>
+            <text fg={colors.text}>Tag: <span fg={colors.warn}>{activeTag}</span> {tagDetails?.description ? `(${tagDetails.description})` : ''} | {showDone ? 'All' : 'Open'} | {tasks.length}</text>
           </box>
           {superCompact ? (
             <box style={{ flexDirection: 'row', gap: 1, padding: 1 }}>
@@ -629,6 +651,7 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
                   <box style={{ flexDirection: 'row', gap: 1 }}>
                     <Pill label="Edit" hotkey="e" />
                     <Pill label="Description" hotkey="d" />
+                    <Pill label="Delete Tag" hotkey="Shift+D" fg="#ffffff" bg={colors.danger} />
                     <Pill label="Delete" hotkey="x" fg="#ffffff" bg={colors.danger} />
                   </box>
                 </box>
@@ -639,6 +662,7 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
                   <Pill label="Edit" hotkey="e" />
                   <Pill label="Desc" hotkey="d" />
                   <Pill label="Sidebar" hotkey="b" />
+                    <Pill label="Del Tag" hotkey="Shift+D" fg="#ffffff" bg={colors.danger} />
                   <Pill label="Delete" hotkey="x" fg="#ffffff" bg={colors.danger} />
                 </box>
               )}

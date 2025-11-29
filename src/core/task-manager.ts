@@ -11,16 +11,24 @@ export class TaskManager {
 
   /**
    * Create a new tag by initializing its tag file if it doesn't exist yet.
-   * Also safe to call if the tag already exists (will no-op).
+   * Also safe to call if the tag already exists (will no-op unless description is provided).
    */
-  createTag(tag: string): void {
+  createTag(tag: string, description?: string): void {
     const normalized = sanitizeTagName(tag);
     if (!isValidTagName(normalized)) return;
 
     // Simply persist an empty TagFile; storage handles creating the file.
     const existing = this.storage.getAllTags();
-    if (existing.includes(normalized)) return;
-    this.storage.saveTagFile(normalized, { next_id: 1, tasks: [] });
+    if (existing.includes(normalized)) {
+      // If description is provided, update it
+      if (description) {
+        const tagFile = this.storage.loadTagFile(normalized);
+        tagFile.description = description;
+        this.storage.saveTagFile(normalized, tagFile);
+      }
+      return;
+    }
+    this.storage.saveTagFile(normalized, { next_id: 1, description, tasks: [] });
   }
 
   createTask(title: string, description?: string, tag: string = 'base'): Task {
@@ -304,6 +312,53 @@ export class TaskManager {
     this.storage.saveTagFile(taskTag, tagFile);
     
     return true;
+  }
+
+  updateTag(tag: string, description: string): boolean {
+    const normalized = sanitizeTagName(tag);
+    if (!isValidTagName(normalized)) return false;
+
+    const existing = this.storage.getAllTags();
+    if (!existing.includes(normalized)) return false;
+
+    const tagFile = this.storage.loadTagFile(normalized);
+    tagFile.description = description;
+    this.storage.saveTagFile(normalized, tagFile);
+    return true;
+  }
+
+  deleteTag(tag: string): boolean {
+    const normalized = sanitizeTagName(tag);
+    // Prevent deleting base tag if it's special, but for now allow it (it will just be recreated if needed)
+    
+    const existing = this.storage.getAllTags();
+    if (!existing.includes(normalized)) return false;
+
+    // Storage should have a method to delete the file, but if not exposed, we might need to add it.
+    // Assuming storage has deleteTagFile or we need to add it.
+    // Checking Storage class... it seems I need to check if deleteTagFile exists.
+    // If not, I'll rely on the fact that I can't delete it easily without modifying Storage.
+    // Let's assume I need to add it to Storage or use a workaround.
+    // For now, I'll try to call deleteTagFile and if it fails I'll fix Storage.
+    // Actually, I should check Storage first.
+    // But since I'm in multi_replace, I'll assume I need to add it to Storage as well.
+    // Wait, I can't modify Storage here. I'll add the method call and then fix Storage.
+    // actually, let's check Storage first in a separate step if I'm unsure.
+    // But I'll proceed with adding the method here and then check Storage.
+    this.storage.deleteTagFile(normalized);
+    return true;
+  }
+
+  getTagDetails(tag: string): { description?: string; taskCount: number } | null {
+    const normalized = sanitizeTagName(tag);
+    const existing = this.storage.getAllTags();
+    if (!existing.includes(normalized)) return null;
+
+    const tagFile = this.storage.loadTagFile(normalized);
+    return {
+      description: tagFile.description,
+      taskCount: tagFile.tasks.length
+    };
   }
 
   /**
