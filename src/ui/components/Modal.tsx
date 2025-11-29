@@ -20,6 +20,42 @@ interface ModalProps {
   onSubmit: (v: string) => void;
 }
 
+type InputModal = Extract<
+  ModalState,
+  { type: 'newTag' | 'newTagDesc' | 'subtaskNew' | 'subtaskEdit' | 'editTitle' | 'editDescription' }
+>;
+
+function getInputModalTitle(modal: InputModal): string {
+  switch (modal.type) {
+    case 'newTag':
+      return 'New Tag - Name';
+    case 'newTagDesc':
+      return 'New Tag - Description';
+    case 'subtaskNew':
+      return 'New Subtask';
+    case 'subtaskEdit':
+      return 'Edit Subtask';
+    case 'editTitle':
+      return modal.taskId === -1 ? 'New Task - Title' : 'Edit - Title';
+    case 'editDescription':
+      return modal.taskId === -1 ? 'New Task - Description' : 'Edit - Description';
+  }
+}
+
+function isInputModal(modal: ModalProps['modal']): modal is InputModal {
+  switch (modal.type) {
+    case 'newTag':
+    case 'newTagDesc':
+    case 'subtaskNew':
+    case 'subtaskEdit':
+    case 'editTitle':
+    case 'editDescription':
+      return true;
+    default:
+      return false;
+  }
+}
+
 export function Modal({ modal, onInput, onSubmit }: ModalProps) {
   return (
     <box style={{
@@ -79,31 +115,17 @@ export function Modal({ modal, onInput, onSubmit }: ModalProps) {
                 <box style={{ marginTop: 1, flexShrink: 0 }}>
                 <Pill label="Close" hotkey="Esc" />
               </box>
-              </>
-        ) : (
+          </>
+        ) : isInputModal(modal) ? (
           <>
             <text fg={colors.text}>
               <strong>
-                {modal.type === 'newTag'
-                          ? 'New Tag - Name'
-                          : modal.type === 'newTagDesc'
-                            ? 'New Tag - Description'
-                            : modal.type === 'subtaskNew'
-                    ? 'New Subtask'
-                    : modal.type === 'subtaskEdit'
-                      ? 'Edit Subtask'
-                      : modal.type === 'editTitle' && modal.taskId === -1
-                        ? 'New Task - Title'
-                        : modal.type === 'editDescription' && modal.taskId === -1
-                          ? 'New Task - Description'
-                          : modal.type === 'editTitle'
-                            ? 'Edit - Title'
-                            : 'Edit - Description'}
+                {getInputModalTitle(modal)}
               </strong>
             </text>
             <input
               style={{ width: '100%', padding: 1 }}
-              value={'value' in modal ? modal.value : ''}
+              value={modal.value}
               focused
               placeholder={
                 modal.type === 'newTag'
@@ -122,7 +144,7 @@ export function Modal({ modal, onInput, onSubmit }: ModalProps) {
               <Pill label="Cancel" hotkey="Esc" />
             </box>
           </>
-        )}
+        ) : null}
       </box>
     </box>
   );

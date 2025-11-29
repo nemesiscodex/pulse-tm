@@ -3,7 +3,6 @@ import { TaskManager } from '../../core/task-manager';
 import { handleTags } from './tags';
 
 export async function handleTag(args: CommandArgs): Promise<void> {
-  const taskManager = new TaskManager(args.workingDir);
   const subcommand = args.args[0];
 
   if (!subcommand) {
@@ -25,6 +24,7 @@ export async function handleTag(args: CommandArgs): Promise<void> {
       }
       // TODO: Add confirmation prompt if not forced? For CLI, usually force or interactive.
       // For now, just delete as requested.
+      const taskManager = new TaskManager(args.workingDir);
       const success = taskManager.deleteTag(tagName);
       if (success) {
         console.log(`Tag "${tagName}" deleted successfully.`);
@@ -45,6 +45,7 @@ export async function handleTag(args: CommandArgs): Promise<void> {
         console.error('Error: Description required (-d "desc")');
         return;
       }
+      const taskManager = new TaskManager(args.workingDir);
       const success = taskManager.updateTag(tagName, description);
       if (success) {
         console.log(`Tag "${tagName}" updated successfully.`);
@@ -60,6 +61,7 @@ export async function handleTag(args: CommandArgs): Promise<void> {
         console.error('Error: Tag name required for show command');
         return;
       }
+      const taskManager = new TaskManager(args.workingDir);
       const details = taskManager.getTagDetails(tagName);
       if (details) {
         console.log(`Tag: ${tagName}`);

@@ -21,7 +21,7 @@ export async function runDashboard(workingDir?: string): Promise<void> {
 }
 
 function BoardApp({ workingDir }: { workingDir?: string }) {
-  const { manager, tags, activeTag, setActiveTag, tasks, refresh } = useTaskData(workingDir);
+  const { manager, tags, activeTag, setActiveTag, tasks, refresh, dataVersion } = useTaskData(workingDir);
   const { width } = useTerminalSize();
   const stacked = width < 120;
   const compact = width < 120;
@@ -36,7 +36,7 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
   // Get tag details
   const tagDetails = useMemo(() => {
     return manager.getTagDetails(activeTag);
-  }, [manager, activeTag, tasks]); // tasks dependency to refresh when tasks change (though description changes might need explicit refresh)
+  }, [manager, activeTag, tasks, dataVersion]);
 
   const notify = useCallback((m: string) => {
     setMessage(m);

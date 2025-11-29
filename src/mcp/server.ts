@@ -9,6 +9,7 @@ import { TaskManager } from '../core/task-manager.js';
 import type { Task, TaskStatus } from '../types/index.js';
 import { PULSE_VERSION } from '../version.js';
 import { getProjectPath } from '../utils/project-path.js';
+import { formatTagList } from '../utils/tag-list.js';
 
 // Helper function to serialize task for MCP response
 function serializeTask(task: Task, taskManager: TaskManager): Record<string, unknown> {
@@ -64,7 +65,7 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'pulse_update_task',
-    description: 'Update a task or subtask (title, description, status)',
+    description: 'Update a task or subtask (title/status; description is task-only)',
     inputSchema: {
       type: 'object',
       properties: {
@@ -82,7 +83,7 @@ const TOOLS: Tool[] = [
         },
         description: {
           type: 'string',
-          description: 'New description',
+          description: 'New task description (subtasks do not support descriptions)',
         },
         status: {
           type: 'string',
@@ -261,22 +262,25 @@ Do not skip steps. Always keep task status in sync with your actual work.`,
           };
 
           if (subtask_id !== undefined) {
-            // Update subtask
-            if (status) {
-              const subtask = taskManager.updateSubtaskStatus(task_id, subtask_id, status, tag);
-              if (!subtask) return { content: [{ type: 'text', text: `Subtask ${subtask_id} not found` }], isError: true };
+            // Update subtask (single save even when multiple fields provided)
+            const updates: { title?: string; status?: TaskStatus } = {};
+            if (status) updates.status = status;
+            if (title) updates.title = title;
+
+            if (!updates.title && !updates.status) {
+              return { content: [{ type: 'text', text: 'No supported subtask updates provided (status/title only)' }], isError: true };
             }
-            if (title) {
-              const subtask = taskManager.updateSubtask(task_id, subtask_id, { title }, tag);
-              if (!subtask) return { content: [{ type: 'text', text: `Subtask ${subtask_id} not found` }], isError: true };
-            }
-            // Note: Description update for subtasks is not supported by TaskManager yet, ignoring if provided.
-            
+
+            const subtask = taskManager.updateSubtask(task_id, subtask_id, updates, tag);
+            if (!subtask) return { content: [{ type: 'text', text: `Subtask ${subtask_id} not found` }], isError: true };
+
+            // Note: Description update for subtasks is not supported by TaskManager yet.
             return {
               content: [{ type: 'text', text: `Subtask ${subtask_id} updated successfully` }],
             };
           } else {
             // Update task
+            // Note: status and other fields are applied in separate calls, so partial updates are possible if the second write fails.
             if (status) {
               const task = taskManager.updateTaskStatus(task_id, status, tag);
               if (!task) return { content: [{ type: 'text', text: `Task ${task_id} not found` }], isError: true };
@@ -356,34 +360,8 @@ Do not skip steps. Always keep task status in sync with your actual work.`,
           };
 
           if (action === 'list') {
-            const allTags = taskManager.getAllTags();
-            let result = '';
-            
-            if (show_all) {
-              result = 'All tags:\n';
-              for (const t of allTags) {
-                const tasks = taskManager.listTasks(t);
-                const details = taskManager.getTagDetails(t);
-                const desc = details?.description ? ` - ${details.description}` : '';
-                result += `  ${t} (${tasks.length} tasks)${desc}\n`;
-              }
-            } else {
-              result = 'Tags with open tasks:\n';
-              let foundOpenTasks = false;
-              for (const t of allTags) {
-                const openTasks = taskManager.listTasks(t).filter(task => 
-                  task.status === 'PENDING' || task.status === 'INPROGRESS'
-                );
-                if (openTasks.length > 0) {
-                  const details = taskManager.getTagDetails(t);
-                  const desc = details?.description ? ` - ${details.description}` : '';
-                  result += `  ${t} (${openTasks.length} open)${desc}\n`;
-                  foundOpenTasks = true;
-                }
-              }
-              if (!foundOpenTasks) result += '  No tags with open tasks found.\n';
-            }
-            return { content: [{ type: 'text', text: result.trim() }] };
+            const result = formatTagList(taskManager, { showAll: Boolean(show_all) });
+            return { content: [{ type: 'text', text: result }] };
           }
 
           if (action === 'update') {

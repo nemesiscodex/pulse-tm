@@ -186,29 +186,7 @@ export class TaskManager {
   }
 
   updateSubtaskStatus(parentTaskId: number, subtaskId: number, status: TaskStatus, tag?: string): Subtask | null {
-    const found = this.storage.findTask(parentTaskId, tag);
-    if (!found) return null;
-
-    const { task, tag: foundTag } = found;
-    const tagFile = this.storage.loadTagFile(foundTag);
-    const taskIndex = tagFile.tasks.findIndex(t => t.id === parentTaskId);
-    
-    if (taskIndex === -1) return null;
-
-    const subtaskIndex = task.subtasks.findIndex(st => st.id === subtaskId);
-    if (subtaskIndex === -1) return null;
-
-    const updatedSubtask = task.subtasks[subtaskIndex];
-    if (!updatedSubtask) return null;
-
-    updatedSubtask.status = status;
-    updatedSubtask.updatedAt = new Date();
-    task.updatedAt = new Date();
-    
-    tagFile.tasks[taskIndex] = task;
-    this.storage.saveTagFile(foundTag, tagFile);
-    
-    return updatedSubtask;
+    return this.updateSubtask(parentTaskId, subtaskId, { status }, tag);
   }
 
   deleteSubtask(parentTaskId: number, subtaskId: number, tag?: string): boolean {
@@ -272,7 +250,7 @@ export class TaskManager {
     return found ? found.task : null;
   }
 
-  updateSubtask(parentTaskId: number, subtaskId: number, updates: Partial<Pick<Subtask, 'title'>>, tag?: string): Subtask | null {
+  updateSubtask(parentTaskId: number, subtaskId: number, updates: Partial<Pick<Subtask, 'title' | 'status'>>, tag?: string): Subtask | null {
     const found = this.storage.findTask(parentTaskId, tag);
     if (!found) return null;
 
@@ -345,6 +323,7 @@ export class TaskManager {
 
   getTagDetails(tag: string): { description?: string; taskCount: number } | null {
     const normalized = sanitizeTagName(tag);
+    if (!isValidTagName(normalized)) return null;
     const existing = this.storage.getAllTags();
     if (!existing.includes(normalized)) return null;
 
