@@ -176,4 +176,18 @@ describe('TaskManager', () => {
     const completed = manager.getTask(task.id, task.tag);
     expect(completed?.subtasks.every(s => s.status === 'DONE')).toBe(true);
   });
+
+  it('should delete a tag', () => {
+    manager.createTag('to-delete');
+    expect(manager.getAllTags()).toContain('to-delete');
+    
+    const result = manager.deleteTag('to-delete');
+    expect(result).toBe(true);
+    expect(manager.getAllTags()).not.toContain('to-delete');
+  });
+
+  it('should return false when deleting non-existent tag', () => {
+    const result = manager.deleteTag('non-existent');
+    expect(result).toBe(false);
+  });
 });

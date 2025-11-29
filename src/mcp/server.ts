@@ -288,10 +288,13 @@ Do not skip steps. Always keep task status in sync with your actual work.`,
             
             // Fetch updated task to show result
             const updatedTask = taskManager.getTask(task_id, tag);
+            if (!updatedTask) {
+              return { content: [{ type: 'text', text: `Task ${task_id} not found after update` }], isError: true };
+            }
             return {
               content: [{
                 type: 'text',
-                text: `Task updated successfully:\n${JSON.stringify(serializeTask(updatedTask!, taskManager), null, 2)}`
+                text: `Task updated successfully:\n${JSON.stringify(serializeTask(updatedTask, taskManager), null, 2)}`
               }],
             };
           }
