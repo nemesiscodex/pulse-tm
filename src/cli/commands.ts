@@ -8,6 +8,7 @@ import { handleSubtask } from './commands/subtask';
 import { handleShow } from './commands/show';
 import { handleMcp } from './commands/mcp';
 import { handleTags } from './commands/tags';
+import { handleTag } from './commands/tag';
 import { handleDelete } from './commands/delete';
 import { handleUi } from './commands/ui';
 import { handleVersion } from './commands/version';
@@ -53,6 +54,9 @@ export async function handleCommand(args: CommandArgs): Promise<void> {
     case 'tags':
       await handleTags(args);
       break;
+    case 'tag':
+      await handleTag(args);
+      break;
     case 'version':
     case '--version':
     case '-v':
@@ -90,6 +94,7 @@ COMMANDS:
   ui                    Launch the interactive dashboard
   mcp                   Start MCP server for AI integration
   tags                  List tags
+  tag <subcommand>      Manage tags (list, delete, update, show)
   version               Show Pulse version
   help                  Show this help message
 

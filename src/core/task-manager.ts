@@ -11,16 +11,24 @@ export class TaskManager {
 
   /**
    * Create a new tag by initializing its tag file if it doesn't exist yet.
-   * Also safe to call if the tag already exists (will no-op).
+   * Also safe to call if the tag already exists (will no-op unless description is provided).
    */
-  createTag(tag: string): void {
+  createTag(tag: string, description?: string): void {
     const normalized = sanitizeTagName(tag);
     if (!isValidTagName(normalized)) return;
 
     // Simply persist an empty TagFile; storage handles creating the file.
     const existing = this.storage.getAllTags();
-    if (existing.includes(normalized)) return;
-    this.storage.saveTagFile(normalized, { next_id: 1, tasks: [] });
+    if (existing.includes(normalized)) {
+      // If description is provided, update it
+      if (description) {
+        const tagFile = this.storage.loadTagFile(normalized);
+        tagFile.description = description;
+        this.storage.saveTagFile(normalized, tagFile);
+      }
+      return;
+    }
+    this.storage.saveTagFile(normalized, { next_id: 1, description, tasks: [] });
   }
 
   createTask(title: string, description?: string, tag: string = 'base'): Task {
@@ -178,29 +186,7 @@ export class TaskManager {
   }
 
   updateSubtaskStatus(parentTaskId: number, subtaskId: number, status: TaskStatus, tag?: string): Subtask | null {
-    const found = this.storage.findTask(parentTaskId, tag);
-    if (!found) return null;
-
-    const { task, tag: foundTag } = found;
-    const tagFile = this.storage.loadTagFile(foundTag);
-    const taskIndex = tagFile.tasks.findIndex(t => t.id === parentTaskId);
-    
-    if (taskIndex === -1) return null;
-
-    const subtaskIndex = task.subtasks.findIndex(st => st.id === subtaskId);
-    if (subtaskIndex === -1) return null;
-
-    const updatedSubtask = task.subtasks[subtaskIndex];
-    if (!updatedSubtask) return null;
-
-    updatedSubtask.status = status;
-    updatedSubtask.updatedAt = new Date();
-    task.updatedAt = new Date();
-    
-    tagFile.tasks[taskIndex] = task;
-    this.storage.saveTagFile(foundTag, tagFile);
-    
-    return updatedSubtask;
+    return this.updateSubtask(parentTaskId, subtaskId, { status }, tag);
   }
 
   deleteSubtask(parentTaskId: number, subtaskId: number, tag?: string): boolean {
@@ -264,7 +250,7 @@ export class TaskManager {
     return found ? found.task : null;
   }
 
-  updateSubtask(parentTaskId: number, subtaskId: number, updates: Partial<Pick<Subtask, 'title'>>, tag?: string): Subtask | null {
+  updateSubtask(parentTaskId: number, subtaskId: number, updates: Partial<Pick<Subtask, 'title' | 'status'>>, tag?: string): Subtask | null {
     const found = this.storage.findTask(parentTaskId, tag);
     if (!found) return null;
 
@@ -304,6 +290,48 @@ export class TaskManager {
     this.storage.saveTagFile(taskTag, tagFile);
     
     return true;
+  }
+
+  updateTag(tag: string, description: string): boolean {
+    const normalized = sanitizeTagName(tag);
+    if (!isValidTagName(normalized)) return false;
+
+    const existing = this.storage.getAllTags();
+    if (!existing.includes(normalized)) return false;
+
+    const tagFile = this.storage.loadTagFile(normalized);
+    tagFile.description = description;
+    this.storage.saveTagFile(normalized, tagFile);
+    return true;
+  }
+
+  deleteTag(tag: string): boolean {
+    const normalized = sanitizeTagName(tag);
+    if (!isValidTagName(normalized)) return false;
+    
+    const existing = this.storage.getAllTags();
+    if (!existing.includes(normalized)) return false;
+
+    // Ensure storage supports deletion
+    if (typeof this.storage.deleteTagFile !== 'function') {
+      throw new Error('Storage implementation does not support deleting tags');
+    }
+
+    this.storage.deleteTagFile(normalized);
+    return true;
+  }
+
+  getTagDetails(tag: string): { description?: string; taskCount: number } | null {
+    const normalized = sanitizeTagName(tag);
+    if (!isValidTagName(normalized)) return null;
+    const existing = this.storage.getAllTags();
+    if (!existing.includes(normalized)) return null;
+
+    const tagFile = this.storage.loadTagFile(normalized);
+    return {
+      description: tagFile.description,
+      taskCount: tagFile.tasks.length
+    };
   }
 
   /**

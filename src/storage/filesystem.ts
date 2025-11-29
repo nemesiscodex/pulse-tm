@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, unlinkSync } from 'fs';
 import { join, resolve, basename } from 'path';
 import { parse, stringify } from 'yaml';
 import type { TagFile, Task } from '../types';
@@ -90,6 +90,18 @@ export class Storage {
     } catch (error) {
       console.error(`Error saving tag file for ${tag}:`, error);
       throw error;
+    }
+  }
+
+  deleteTagFile(tag: string): void {
+    const filePath = this.getTagFilePath(tag);
+    if (existsSync(filePath)) {
+      try {
+        unlinkSync(filePath);
+      } catch (error) {
+        console.error(`Error deleting tag file for ${tag}:`, error);
+        throw error;
+      }
     }
   }
 

@@ -15,6 +15,7 @@ export function useTaskData(workingDir?: string) {
   const [tags, setTags] = useState<string[]>(['base']);
   const [byTag, setByTag] = useState<Record<string, Task[]>>({ base: [] });
   const [activeTag, setActiveTagState] = useState('base');
+  const [dataVersion, setDataVersion] = useState(0);
   const setActiveTag = useCallback((tag: string) => {
     const normalized = sanitizeTagName(tag);
     setActiveTagState(isValidTagName(normalized) ? normalized : 'base');
@@ -36,6 +37,7 @@ export function useTaskData(workingDir?: string) {
     if (!uniqueTags.includes(activeTag)) {
       setActiveTag(uniqueTags[0] ?? 'base');
     }
+    setDataVersion(v => v + 1);
   }, [manager, activeTag, setActiveTag]);
 
   // Initial load and file watching
@@ -72,6 +74,7 @@ export function useTaskData(workingDir?: string) {
     activeTag: safeActiveTag,
     setActiveTag,
     tasks,
-    refresh
+    refresh,
+    dataVersion
   };
 }

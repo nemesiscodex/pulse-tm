@@ -23,6 +23,7 @@ export interface Subtask {
 
 export interface TagFile {
   next_id: number;
+  description?: string;
   tasks: Task[];
 }
 
