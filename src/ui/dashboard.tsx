@@ -1,7 +1,7 @@
 import { createRoot, useKeyboard } from '@opentui/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { TaskStatus } from '../types';
-import { colors, STATUS_COLORS, STATUS_LABELS, STATUS_SEQUENCE } from './theme';
+import { colors, STATUS_COLORS, STATUS_LABELS, STATUS_SEQUENCE, COMPACT_MODE_BREAKPOINT } from './theme';
 import { useTaskData } from './hooks/useTaskData';
 import { useTerminalSize } from './hooks/useTerminalSize';
 import { useSelection } from './hooks/useSelection';
@@ -11,6 +11,7 @@ import { Pill } from './components/Pill';
 import { Modal, type ModalState } from './components/Modal';
 import { sanitizeTagName, isValidTagName } from '../utils/tag-sanitizer';
 import { createCliRenderer, type ScrollBoxRenderable, strikethrough, bold, t as styled } from '@opentui/core';
+import { SHORTCUTS } from './shortcuts';
 
 export async function runDashboard(workingDir?: string): Promise<void> {
   // Create a CLI renderer instance using the OpenTUI core utilities.
@@ -21,17 +22,20 @@ export async function runDashboard(workingDir?: string): Promise<void> {
 }
 
 function BoardApp({ workingDir }: { workingDir?: string }) {
-  const { manager, tags, activeTag, setActiveTag, tasks, refresh } = useTaskData(workingDir);
+  const { manager, tags, activeTag, setActiveTag, tasks, refresh, dataVersion } = useTaskData(workingDir);
   const { width } = useTerminalSize();
-  const stacked = width < 120;
-  const compact = width < 120;
-  const superCompact = width < 120;
+  const compact = width < COMPACT_MODE_BREAKPOINT;
   const [showDone, setShowDone] = useState(true);
-  const [showSidebar, setShowSidebar] = useState(width >= 120);
+  const [showSidebar, setShowSidebar] = useState(width >= COMPACT_MODE_BREAKPOINT);
   const [sidebarMode, setSidebarMode] = useState<'auto' | 'manual'>('auto');
   const [modal, setModal] = useState<ModalState>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [focusArea, setFocusArea] = useState<'columns' | 'tags' | 'subtasks'>('columns');
+
+  // Get tag details
+  const tagDetails = useMemo(() => {
+    return manager.getTagDetails(activeTag);
+  }, [manager, activeTag, tasks, dataVersion]);
 
   const notify = useCallback((m: string) => {
     setMessage(m);
@@ -89,7 +93,7 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
 
   useEffect(() => {
     if (sidebarMode === 'auto') {
-      setShowSidebar(width >= 120);
+      setShowSidebar(width >= COMPACT_MODE_BREAKPOINT);
     } else if (width < 80 && showSidebar) {
       // Force hide on extremely small viewports
       setShowSidebar(false);
@@ -97,10 +101,10 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
   }, [width, sidebarMode, showSidebar]);
 
   useEffect(() => {
-    if (superCompact && showSidebar && focusArea !== 'tags') {
+    if (compact && showSidebar && focusArea !== 'tags') {
       setFocusArea('tags');
     }
-  }, [superCompact, showSidebar, focusArea]);
+  }, [compact, showSidebar, focusArea]);
 
   const applyStatus = useCallback((taskId: number, status: TaskStatus, tag: string, opts?: { completeSubtasks?: boolean }) => {
     manager.updateTaskStatus(taskId, status, tag, opts);
@@ -139,6 +143,32 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
     }
   }, [selectedTask, subtasks, subtaskSelection, manager, refresh, notify, setSubtaskIndex]);
 
+  const moveTask = useCallback((delta: number) => {
+    const currentTasks = visibleColumns[col];
+    if (!currentTasks || currentTasks.length === 0) return;
+
+    const currentIndex = rowIndices[col] ?? 0;
+    const targetIndex = currentIndex + delta;
+
+    if (targetIndex < 0 || targetIndex >= currentTasks.length) return;
+
+    const task1 = currentTasks[currentIndex];
+    const task2 = currentTasks[targetIndex];
+
+    if (!task1 || !task2) return;
+
+    manager.swapTaskOrders(task1.id, task2.id, activeTag);
+    
+    setRowIndices(prev => {
+      const next = [...prev];
+      next[col] = targetIndex;
+      return next;
+    });
+    
+    refresh();
+    notify(`Moved task #${task1.id}`);
+  }, [visibleColumns, col, rowIndices, manager, activeTag, setRowIndices, refresh, notify]);
+
   const beginSubtaskNew = useCallback(() => {
     if (!selectedTask) return notify('Select a task first');
     setModal({ type: 'subtaskNew', taskId: selectedTask.id, tag: selectedTask.tag, value: '' });
@@ -166,28 +196,83 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
   }, [selectedTask, applyStatus]);
 
   const beginNew = useCallback(() => setModal({ type: 'editTitle', taskId: -1, tag: activeTag, value: '' }), [activeTag]);
-  const beginNewTag = useCallback(() => setModal({ type: 'newTag', value: '' }), []);
+  const beginNewTag = useCallback(() => setModal({ type: 'newTagCombined', name: '', description: '', focus: 'name' }), []);
   const beginEdit = useCallback(() => { if (selectedTask) setModal({ type: 'editTitle', taskId: selectedTask.id, tag: selectedTask.tag, value: selectedTask.title }); }, [selectedTask]);
   const beginDesc = useCallback(() => { if (selectedTask) setModal({ type: 'editDescription', taskId: selectedTask.id, tag: selectedTask.tag, value: selectedTask.description ?? '' }); }, [selectedTask]);
   const beginDelete = useCallback(() => { if (selectedTask) setModal({ type: 'confirmDelete', taskId: selectedTask.id, tag: selectedTask.tag }); }, [selectedTask]);
+  const beginDeleteTag = useCallback(() => { if (activeTag && activeTag !== 'base') setModal({ type: 'confirmDelete', taskId: -1, tag: activeTag }); }, [activeTag]);
+  const beginInspectTag = useCallback(() => { if (activeTag) setModal({ type: 'inspectTag', tagName: activeTag, description: tagDetails?.description || '', taskCount: tasks.length }); }, [activeTag, tagDetails, tasks.length]);
+
+  const handleModalInput = useCallback((v: string, field?: string) => {
+    setModal(m => {
+      if (!m) return null;
+      if (m.type === 'newTagCombined') {
+        if (field === 'name') return { ...m, name: v };
+        if (field === 'description') return { ...m, description: v };
+        return m;
+      }
+      if (m.type !== 'confirmDelete' && m.type !== 'confirmDeleteSubtask' && m.type !== 'inspectTag' && m.type !== 'help' && m.type !== 'confirmComplete') {
+        return { ...m, value: v };
+      }
+      return m;
+    });
+  }, []);
 
   const submitModal = useCallback((value: string) => {
-    if (!modal || modal.type === 'confirmDelete' || modal.type === 'confirmDeleteSubtask' || modal.type === 'confirmComplete' || modal.type === 'help') return;
+    if (!modal) return;
+    
+    if (modal.type === 'newTagCombined') {
+        if (value === 'next') {
+            setModal(m => m && m.type === 'newTagCombined' ? { ...m, focus: 'description' } : m);
+            return;
+        }
+        if (value === 'submit') {
+            const name = modal.name.trim();
+            if (!name) return notify('Tag name required');
+            const normalized = sanitizeTagName(name);
+            if (!isValidTagName(normalized)) return notify('Invalid tag name');
+            if (tags.includes(normalized)) {
+                 const newDescription = modal.description.trim();
+                 const existingTagDetails = manager.getTagDetails(normalized);
+                 const existingDescription = existingTagDetails?.description || '';
+                 
+                 // If user provided a description and it's different from existing, update it
+                 if (newDescription && newDescription !== existingDescription) {
+                     try {
+                         const updated = manager.updateTag(normalized, newDescription);
+                         if (updated) {
+                             setActiveTag(normalized);
+                             notify(`Updated tag "${normalized}"`);
+                         } else {
+                             notify(`Failed to update tag "${normalized}"`);
+                             return;
+                         }
+                     } catch (error) {
+                         notify(`Error updating tag: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                         return;
+                     }
+                 } else {
+                     // Description is empty or unchanged, just switch to tag
+                     setActiveTag(normalized);
+                     notify(`Switched to tag "${normalized}"`);
+                 }
+            } else {
+                 manager.createTag(normalized, modal.description.trim());
+                 setActiveTag(normalized);
+                 notify(`Created tag "${normalized}"`);
+            }
+            setModal(null);
+            refresh();
+            return;
+        }
+        return;
+    }
+
+    if (modal.type === 'confirmDelete' || modal.type === 'confirmDeleteSubtask' || modal.type === 'confirmComplete' || modal.type === 'help' || modal.type === 'inspectTag') return;
     const text = value.trim();
     if (!text) return notify('Text required');
 
-    if (modal.type === 'newTag') {
-      const normalized = sanitizeTagName(text);
-      if (!isValidTagName(normalized)) return notify('Invalid tag name');
-      if (tags.includes(normalized)) {
-        setActiveTag(normalized);
-        notify(`Switched to tag "${normalized}"`);
-      } else {
-        manager.createTag(normalized);
-        setActiveTag(normalized);
-        notify(`Created tag "${normalized}"`);
-      }
-    } else if (modal.taskId === -1) {
+    if (modal.taskId === -1) {
       const t = manager.createTask(text, undefined, activeTag);
       notify(`Created #${t.id}`);
     } else if (modal.type === 'editTitle') {
@@ -221,10 +306,23 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
     if (seq === 'q') process.exit(0);
 
     if (modal) {
+        if (modal.type === 'newTagCombined' && key.name === 'tab') {
+            setModal(m => m && m.type === 'newTagCombined' ? { ...m, focus: m.focus === 'name' ? 'description' : 'name' } : m);
+            return;
+        }
+
       if (modal.type === 'confirmDelete') {
         if (seq === 'y' || key.name === 'return') {
-          const ok = manager.deleteTask(modal.taskId, modal.tag);
-          notify(ok ? `Deleted #${modal.taskId}` : 'Not found');
+          if (modal.taskId === -1) {
+            // Delete Tag
+            const ok = manager.deleteTag(modal.tag);
+            notify(ok ? `Deleted tag "${modal.tag}"` : 'Error deleting tag');
+            if (ok) setActiveTag('base'); // Switch to base after deletion
+          } else {
+          // Delete Task
+            const ok = manager.deleteTask(modal.taskId, modal.tag);
+            notify(ok ? `Deleted #${modal.taskId}` : 'Not found');
+          }
           setModal(null);
           refresh();
         } else if (seq === 'n' || key.name === 'escape') setModal(null);
@@ -251,8 +349,8 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
       return;
     }
 
-    // Super compact focus mode escape
-    if (width < 120 && focusArea === 'subtasks' && key.name === 'escape') {
+    // Compact focus mode escape
+    if (compact && focusArea === 'subtasks' && key.name === 'escape') {
       setFocusArea('columns');
       return;
     }
@@ -261,7 +359,7 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
       if (key.name === 'up') return moveTag(-1);
       if (key.name === 'down') return moveTag(1);
       if (key.name === 'right' || key.name === 'return') {
-        if (superCompact) setShowSidebar(false);
+        if (compact) setShowSidebar(false);
         setFocusArea('columns');
         notify('Focus: columns');
         return;
@@ -294,8 +392,12 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
     }
 
     switch (key.name) {
-      case 'up': return moveRow(-1);
-      case 'down': return moveRow(1);
+      case 'up':
+        if (key.shift) { moveTask(-1); return; }
+        return moveRow(-1);
+      case 'down':
+        if (key.shift) { moveTask(1); return; }
+        return moveRow(1);
       case 'left':
         if (key.meta || key.option) return moveTag(-1);
         if (focusArea === 'subtasks') { setFocusArea('columns'); notify('Focus: columns'); return; }
@@ -310,7 +412,10 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
 
     if (seq === 's') cycle();
     else if (seq === 'e') beginEdit();
-    else if (seq === 'd') beginDesc();
+    else if (seq === 'd') {
+      if (key.shift) beginDeleteTag();
+      else beginDesc();
+    }
     else if (seq === 'x') beginDelete();
     else if (seq === 'n') beginNew();
     else if (seq === 't') beginNewTag();
@@ -319,20 +424,21 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
     else if (seq === '?' || seq === 'h') setModal({ type: 'help' });
     else if (seq === '[' || seq === ',') moveTag(-1);
     else if (seq === ']' || seq === '.') moveTag(1);
+    else if (key.shift && seq === 'i') beginInspectTag();
     else if (seq === 'r') refresh();
   });
 
   const counts = { todo: grouped[0].length, doing: grouped[1].length, done: grouped[2].length };
 
-  // In superCompact mode, sidebar takes full screen
-  if (superCompact && showSidebar) {
+  // In compact mode, sidebar takes full screen
+  if (compact && showSidebar) {
     return (
       <box style={{ width: '100%', height: '100%' }}>
         <Sidebar width={width} tags={tags} activeTag={activeTag} focused={focusArea === 'tags'} fullWidth={true} />
         {modal ? (
           <Modal
             modal={modal}
-            onInput={v => setModal(m => (m && m.type !== 'confirmDelete' && m.type !== 'confirmDeleteSubtask' ? { ...m, value: v } : m))}
+            onInput={handleModalInput}
             onSubmit={submitModal}
           />
         ) : null}
@@ -340,8 +446,8 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
     );
   }
 
-  // In superCompact mode, if focused on subtasks, show only details
-  if (superCompact && focusArea === 'subtasks' && selectedTask) {
+  // In compact mode, if focused on subtasks, show only details
+  if (compact && focusArea === 'subtasks' && selectedTask) {
     return (
       <box style={{ width: '100%', height: '100%', backgroundColor: colors.bg, flexDirection: 'column', padding: 1 }}>
         <box style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 1 }}>
@@ -420,13 +526,43 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
         {modal ? (
           <Modal
             modal={modal}
-            onInput={v => setModal(m => (m && m.type !== 'confirmDelete' ? { ...m, value: v } : m))}
+            onInput={handleModalInput}
             onSubmit={submitModal}
           />
         ) : null}
       </box>
     );
   }
+
+  const renderShortcuts = () => {
+    // Determine which shortcuts to show based on mode
+    // Filter out 'b' (Sidebar) and '[ / ]' (Cycle Tags) - these are shown in the sidebar footer
+    const navShortcuts = SHORTCUTS.NAVIGATION.filter(s => !['b', '[ / ]'].includes(s.key));
+    const taskShortcuts = SHORTCUTS.TASKS;
+    
+    // Combine for display (limited space logic could go here)
+    if (compact) {
+         return (
+            <box style={{ flexDirection: 'column', gap: 1 }}>
+              <box style={{ flexDirection: 'row', gap: 1 }}>
+                 {navShortcuts.filter(s => s.key === 'Arrows').map(s => <Pill key={s.key} label={s.label} hotkey={s.key} />)}
+              </box>
+              <box style={{ flexDirection: 'row', gap: 1 }}>
+                 {taskShortcuts.filter(s => ['e', 'd', 'x', 'a', 's', 'n'].includes(s.key) || s.key === 'Shift+D').map(s => <Pill key={s.key} label={s.label} hotkey={s.key} fg={s.fg} bg={s.bg} />)}
+                  {SHORTCUTS.TAGS.map(s => <Pill key={s.key} label={s.label} hotkey={s.key} fg={s.fg} bg={s.bg} />)}
+              </box>
+            </box>
+         )
+    }
+
+    return (
+        <box style={{ flexDirection: 'row', gap: 1, flexWrap: 'wrap' }}>
+            {navShortcuts.filter(s => s.key === 'Arrows').map(s => <Pill key={s.key} label={s.label} hotkey={s.key} />)}
+            {taskShortcuts.map(s => <Pill key={s.key} label={s.label} hotkey={s.key} fg={s.fg} bg={s.bg} />)}
+            {SHORTCUTS.TAGS.map(s => <Pill key={s.key} label={s.label} hotkey={s.key} fg={s.fg} bg={s.bg} />)}
+        </box>
+    );
+  };
 
   return (
     <box style={{ width: '100%', height: '100%', backgroundColor: colors.bg, flexDirection: 'row' }}>
@@ -458,34 +594,18 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
           <box style={{ flexDirection: 'row', gap: 1, padding: 1 }}>
             <text fg={colors.text}>Tag: <span fg={colors.warn}>{activeTag}</span> | {showDone ? 'All' : 'Open'} | {tasks.length}</text>
           </box>
-          {superCompact ? (
+          {compact ? (
             <box style={{ flexDirection: 'row', gap: 1, padding: 1 }}>
               <Pill label="Help" hotkey="?" />
             </box>
-          ) : compact ? (
-            <box style={{ flexDirection: 'column', gap: 1, padding: 1, alignItems: 'center' }}>
-              <box style={{ flexDirection: 'row', gap: 1, padding: 1 }}>
-                <Pill label="New Task" hotkey="n" />
-                <Pill label="New Tag" hotkey="t" />
-              </box>
-              <box style={{ flexDirection: 'row', gap: 1, padding: 1 }}>
-                <Pill label={showDone ? 'Hide Done' : 'Show Done'} hotkey="a" />
-                <Pill label="Cycle Status" hotkey="s" />
-              </box>
-            </box>
           ) : (
-            <box style={{ flexDirection: 'column', gap: 1, padding: 1, alignItems: 'center' }}>
-              <box style={{ flexDirection: 'row', gap: 1, padding: 1 }}>
-                <Pill label="New Task" hotkey="n" />
-                <Pill label="New Tag" hotkey="t" />
-                <Pill label={showDone ? 'Hide Done' : 'Show Done'} hotkey="a" />
-                <Pill label="Cycle Status" hotkey="s" />
-              </box>
-            </box>
+             <box style={{ flexDirection: 'column', gap: 1, padding: 1, alignItems: 'center' }}>
+                {renderShortcuts()}
+             </box>
           )}
         </box>
 
-        <box style={{ flexGrow: 1, flexDirection: stacked ? 'column' : 'row', gap: 1 }}>
+        <box style={{ flexGrow: 1, flexDirection: compact ? 'column' : 'row', gap: 1 }}>
           {compact ? (
             <Column
               title={`All Tasks (${tasks.length})`}
@@ -494,10 +614,11 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
               focused={col === 0}
               selectedIndex={rowIndices[0] ?? 0}
               onSelect={i => { setFocusArea('columns'); setCol(0); setRowIndices(p => { const n = [...p]; n[0] = i; return n; }); }}
+              dimmed={focusArea === 'subtasks'}
             />
           ) : (
             <>
-                {(!superCompact || col === 0) && (
+                {(!compact || col === 0) && (
                   <Column
                     title={`Pending (${counts.todo})`}
                     color={colors.text}
@@ -505,9 +626,10 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
                     focused={col === 0}
                     selectedIndex={rowIndices[0] ?? 0}
                     onSelect={i => { setFocusArea('columns'); setCol(0); setRowIndices(p => { const n = [...p]; n[0] = i; return n; }); }}
+                    dimmed={focusArea === 'subtasks'}
                   />
                 )}
-                {(!superCompact || col === 1) && (
+                {(!compact || col === 1) && (
                   <Column
                     title={`In Progress (${counts.doing})`}
                     color={colors.warn}
@@ -515,9 +637,10 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
                     focused={col === 1}
                     selectedIndex={rowIndices[1] ?? 0}
                     onSelect={i => { setFocusArea('columns'); setCol(1); setRowIndices(p => { const n = [...p]; n[1] = i; return n; }); }}
+                    dimmed={focusArea === 'subtasks'}
                   />
                 )}
-                {showDone && (!superCompact || col === 2) && (
+                {showDone && (!compact || col === 2) && (
                   <Column
                     title={`Done (${counts.done})`}
                     color={colors.accent}
@@ -525,13 +648,14 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
                     focused={col === 2}
                     selectedIndex={rowIndices[2] ?? 0}
                     onSelect={i => { setFocusArea('columns'); setCol(2); setRowIndices(p => { const n = [...p]; n[2] = i; return n; }); }}
+                    dimmed={focusArea === 'subtasks'}
                   />
                 )}
               </>
           )}
         </box>
 
-        {!superCompact && (
+        {!compact && (
           <box style={{
             backgroundColor: colors.panel,
             padding: 1,
@@ -616,42 +740,12 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
           </box>
         )}
 
-        {!superCompact && (
+        {!compact && focusArea === 'subtasks' && (
           <box style={{ backgroundColor: colors.panel, padding: 1, justifyContent: 'space-between', alignItems: 'center' }}>
             <box style={{ flexDirection: 'column', gap: 1 }}>
-              {compact ? (
-                <box style={{ flexDirection: 'column', gap: 1 }}>
-                  <box style={{ flexDirection: 'row', gap: 1 }}>
-                    <Pill label="Move" hotkey="Arrows" />
-                    <Pill label="Change Tag" hotkey="[ / ]" />
-                    <Pill label="Sidebar" hotkey="b" />
-                  </box>
-                  <box style={{ flexDirection: 'row', gap: 1 }}>
-                    <Pill label="Edit" hotkey="e" />
-                    <Pill label="Description" hotkey="d" />
-                    <Pill label="Delete" hotkey="x" fg="#ffffff" bg={colors.danger} />
-                  </box>
-                </box>
-              ) : (
-                <box style={{ flexDirection: 'row', gap: 1 }}>
-                  <Pill label="Move" hotkey="Arrows" />
-                  <Pill label="Change Tag" hotkey="[ / ]" />
-                  <Pill label="Edit" hotkey="e" />
-                  <Pill label="Desc" hotkey="d" />
-                  <Pill label="Sidebar" hotkey="b" />
-                  <Pill label="Delete" hotkey="x" fg="#ffffff" bg={colors.danger} />
-                </box>
-              )}
-              {selectedTask ? (
-                <box style={{ flexDirection: 'row', gap: 1, marginTop: 1 }}>
-                  <Pill label="Focus Subtasks" hotkey="Enter" />
-                  <Pill label="Add Subtask" hotkey="u" />
-                  <Pill label="Edit Subtask" hotkey="i" />
-                  <Pill label="Status" hotkey="c" />
-                  <Pill label="Reorder" hotkey="Shift+↑↓" />
-                  <Pill label="Delete Subtask" hotkey="Del/Backspace" fg="#ffffff" bg={colors.danger} />
-                </box>
-              ) : null}
+              <box style={{ flexDirection: 'row', gap: 1, marginTop: 1 }}>
+                  {SHORTCUTS.SUBTASKS.map(s => <Pill key={s.key} label={s.label} hotkey={s.key} fg={s.fg} bg={s.bg} />)}
+              </box>
             </box>
             <text fg={colors.muted}>{' '}</text>
           </box>
@@ -660,7 +754,7 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
       {modal ? (
         <Modal
           modal={modal}
-          onInput={v => setModal(m => (m && m.type !== 'confirmDelete' && m.type !== 'confirmDeleteSubtask' ? { ...m, value: v } : m))}
+          onInput={handleModalInput}
           onSubmit={submitModal}
         />
       ) : null}

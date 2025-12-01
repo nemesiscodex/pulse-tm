@@ -10,9 +10,10 @@ interface ColumnProps {
   focused: boolean;
   selectedIndex: number;
   onSelect: (i: number) => void;
+  dimmed?: boolean;
 }
 
-export function Column({ title, color, tasks, focused, selectedIndex, onSelect }: ColumnProps) {
+export function Column({ title, color, tasks, focused, selectedIndex, onSelect, dimmed = false }: ColumnProps) {
   const scrollRef = useRef<ScrollBoxRenderable | null>(null);
 
   // Force re-render when tasks change to prevent ghosting artifacts
@@ -25,6 +26,10 @@ export function Column({ title, color, tasks, focused, selectedIndex, onSelect }
     scrollRef.current.scrollTo({ x: 0, y: targetY });
   }, [selectedIndex, tasks.length, listKey]);
 
+  // When dimmed, use muted colors for borders and text
+  const effectiveColor = dimmed ? colors.dim : color;
+  const effectiveBorderColor = dimmed ? colors.dim : (focused ? color : colors.panelAlt);
+
   return (
     <box style={{
       flexGrow: 1,
@@ -34,9 +39,9 @@ export function Column({ title, color, tasks, focused, selectedIndex, onSelect }
       backgroundColor: colors.panel,
       padding: 1,
       border: true,
-      borderColor: focused ? color : colors.panelAlt
+      borderColor: effectiveBorderColor
     }}>
-      <text fg={color}><strong>{title}{focused ? ' ←' : ''}</strong></text>
+      <text fg={effectiveColor}><strong>{title}{focused && !dimmed ? ' ←' : ''}</strong></text>
       {tasks.length === 0 ? (
         <scrollbox
           key="empty"

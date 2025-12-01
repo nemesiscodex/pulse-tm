@@ -1,5 +1,6 @@
 import { colors } from '../theme';
 import { Pill } from './Pill';
+import { SHORTCUTS } from '../shortcuts';
 
 export type ModalState =
   | { type: 'editTitle'; taskId: number; tag: string; value: string }
@@ -9,14 +10,45 @@ export type ModalState =
   | { type: 'confirmComplete'; taskId: number; tag: string; pendingSubtasks: number; nextStatus: 'DONE' }
   | { type: 'subtaskEdit'; taskId: number; tag: string; subtaskId: number; value: string }
   | { type: 'subtaskNew'; taskId: number; tag: string; value: string }
-  | { type: 'newTag'; value: string }
+  | { type: 'newTagCombined'; name: string; description: string; focus: 'name' | 'description' }
+  | { type: 'inspectTag'; tagName: string; description: string; taskCount: number }
   | { type: 'help' }
   | null;
 
 interface ModalProps {
   modal: Exclude<ModalState, null>;
-  onInput: (v: string) => void;
+  onInput: (v: string, field?: string) => void;
   onSubmit: (v: string) => void;
+}
+
+type InputModal = Extract<
+  ModalState,
+  { type: 'subtaskNew' | 'subtaskEdit' | 'editTitle' | 'editDescription' }
+>;
+
+function getInputModalTitle(modal: InputModal): string {
+  switch (modal.type) {
+    case 'subtaskNew':
+      return 'New Subtask';
+    case 'subtaskEdit':
+      return 'Edit Subtask';
+    case 'editTitle':
+      return modal.taskId === -1 ? 'New Task - Title' : 'Edit - Title';
+    case 'editDescription':
+      return modal.taskId === -1 ? 'New Task - Description' : 'Edit - Description';
+  }
+}
+
+function isInputModal(modal: ModalProps['modal']): modal is InputModal {
+  switch (modal.type) {
+    case 'subtaskNew':
+    case 'subtaskEdit':
+    case 'editTitle':
+    case 'editDescription':
+      return true;
+    default:
+      return false;
+  }
 }
 
 export function Modal({ modal, onInput, onSubmit }: ModalProps) {
@@ -32,80 +64,112 @@ export function Modal({ modal, onInput, onSubmit }: ModalProps) {
         maxHeight: '80%'
       }}>
         {modal.type === 'confirmDelete' ? (
-          <text fg={colors.danger}>Delete task #{modal.taskId}? (Y/N)</text>
+          <text fg={colors.danger}>
+            {modal.taskId === -1 ? `Delete tag "${modal.tag}" and all tasks? (Y/N)` : `Delete task #${modal.taskId}? (Y/N)`}
+          </text>
         ) : modal.type === 'confirmDeleteSubtask' ? (
           <text fg={colors.danger}>Delete subtask #{modal.subtaskId}? (Y/N)</text>
         ) : modal.type === 'confirmComplete' ? (
           <text fg={colors.warn}>
             Mark #{modal.taskId} as done and close {modal.pendingSubtasks} open subtasks? (Y/N)
           </text>
-          ) : modal.type === 'help' ? (
-              <>
-                <scrollbox style={{ flexDirection: 'row', flexGrow: 1 }}>
-                  <box style={{ flexDirection: 'column', gap: 1, flexGrow: 1 }}>
-                    <text fg={colors.accent}><strong>Keyboard Shortcuts</strong></text>
-                    <box style={{ flexDirection: 'column', gap: 1 }}>
-                      <text fg={colors.text}><strong>General</strong></text>
-                      <text fg={colors.muted}>  ? / h      Show this help</text>
-                      <text fg={colors.muted}>  q / Ctrl+C Quit</text>
-                      <text fg={colors.muted}>  r          Refresh</text>
+        ) : modal.type === 'help' ? (
+          <>
+            <scrollbox style={{ flexDirection: 'row', flexGrow: 1 }}>
+              <box style={{ flexDirection: 'column', gap: 1, flexGrow: 1 }}>
+                <text fg={colors.accent}><strong>Keyboard Shortcuts</strong></text>
+                <box style={{ flexDirection: 'column', gap: 1 }}>
+                  <text fg={colors.text}><strong>General</strong></text>
+                  {SHORTCUTS.GENERAL.map(s => <text key={s.key} fg={colors.muted}>  {s.key.padEnd(10)} {s.label}</text>)}
 
-                      <text fg={colors.text}><strong>Navigation</strong></text>
-                      <text fg={colors.muted}>  Arrows     Navigate tasks/columns</text>
-                      <text fg={colors.muted}>  Enter      Focus subtasks</text>
-                      <text fg={colors.muted}>  Esc        Back / Close modal</text>
-                      <text fg={colors.muted}>  b          Toggle Sidebar</text>
-                      <text fg={colors.muted}>  [ / ]      Cycle Tags</text>
+                  <text fg={colors.text} style={{ marginTop: 1 }}><strong>Navigation</strong></text>
+                  {SHORTCUTS.NAVIGATION.map(s => <text key={s.key} fg={colors.muted}>  {s.key.padEnd(10)} {s.label}</text>)}
 
-                      <text fg={colors.text}><strong>Tasks</strong></text>
-                      <text fg={colors.muted}>  n          New Task</text>
-                      <text fg={colors.muted}>  e          Edit Title</text>
-                      <text fg={colors.muted}>  d          Edit Description</text>
-                      <text fg={colors.muted}>  s          Cycle Status</text>
-                      <text fg={colors.muted}>  x          Delete Task</text>
-                      <text fg={colors.muted}>  a          Toggle Done Tasks</text>
+                  <text fg={colors.text} style={{ marginTop: 1 }}><strong>Tasks</strong></text>
+                  {SHORTCUTS.TASKS.map(s => <text key={s.key} fg={colors.muted}>  {s.key.padEnd(10)} {s.label}</text>)}
 
-                      <text fg={colors.text}><strong>Subtasks</strong></text>
-                      <text fg={colors.muted}>  u          New Subtask</text>
-                      <text fg={colors.muted}>  i          Edit Subtask</text>
-                      <text fg={colors.muted}>  c          Cycle Subtask Status</text>
-                      <text fg={colors.muted}>  Shift+Up/Dn Move Subtask</text>
-                    </box>
-                  </box>
-                </scrollbox>
-                <box style={{ marginTop: 1, flexShrink: 0 }}>
-                <Pill label="Close" hotkey="Esc" />
+                  <text fg={colors.text} style={{ marginTop: 1 }}><strong>Subtasks</strong></text>
+                  {SHORTCUTS.SUBTASKS.map(s => <text key={s.key} fg={colors.muted}>  {s.key.padEnd(10)} {s.label}</text>)}
+
+                  <text fg={colors.text} style={{ marginTop: 1 }}><strong>Tags</strong></text>
+                  {SHORTCUTS.TAGS.map(s => <text key={s.key} fg={colors.muted}>  {s.key.padEnd(10)} {s.label}</text>)}
+                </box>
               </box>
-              </>
-        ) : (
+            </scrollbox>
+            <box style={{ marginTop: 1, flexShrink: 0 }}>
+              <Pill label="Close" hotkey="Esc" />
+            </box>
+          </>
+        ) : modal.type === 'inspectTag' ? (
+          <>
+             <text fg={colors.accent}><strong>Tag Details</strong></text>
+             <box style={{ flexDirection: 'column', gap: 1 }}>
+                <box style={{ flexDirection: 'column' }}>
+                  <text fg={colors.muted}>Name</text>
+                  <text fg={colors.text}><strong>{modal.tagName}</strong></text>
+                </box>
+                <box style={{ flexDirection: 'column' }}>
+                  <text fg={colors.muted}>Description</text>
+                  <text fg={colors.text}>{modal.description || '(No description)'}</text>
+                </box>
+                 <box style={{ flexDirection: 'column' }}>
+                  <text fg={colors.muted}>Tasks</text>
+                  <text fg={colors.text}>{modal.taskCount}</text>
+                </box>
+             </box>
+             <box style={{ marginTop: 1, flexDirection: 'row', gap: 1 }}>
+                <Pill label="Close" hotkey="Esc" />
+             </box>
+          </>
+        ) : modal.type === 'newTagCombined' ? (
+          <>
+            <text fg={colors.text}><strong>New Tag</strong></text>
+            
+            <text fg={modal.focus === 'name' ? colors.accent : colors.muted}>Name</text>
+            <box style={{ border: modal.focus === 'name', borderColor: colors.accent, flexDirection: 'column' }}>
+              <input
+                style={{ width: '100%', padding: 1 }}
+                value={modal.name}
+                focused={modal.focus === 'name'}
+                placeholder="Enter tag name..."
+                onInput={v => onInput(v, 'name')}
+                onSubmit={() => onSubmit('next')}
+              />
+            </box>
+
+            <text fg={modal.focus === 'description' ? colors.accent : colors.muted}>Description</text>
+            <box style={{ border: modal.focus === 'description', borderColor: colors.accent, flexDirection: 'column' }}>
+              <input
+                style={{ width: '100%', padding: 1 }}
+                value={modal.description}
+                focused={modal.focus === 'description'}
+                placeholder="Enter description (optional)..."
+                onInput={v => onInput(v, 'description')}
+                onSubmit={() => onSubmit('submit')}
+              />
+            </box>
+
+            <box style={{ flexDirection: 'row', gap: 1, padding: 1 }}>
+              <Pill label="Next/Save" hotkey="Enter" />
+              <Pill label="Switch Focus" hotkey="Tab" />
+              <Pill label="Cancel" hotkey="Esc" />
+            </box>
+          </>
+        ) : isInputModal(modal) ? (
           <>
             <text fg={colors.text}>
               <strong>
-                {modal.type === 'newTag'
-                  ? 'New Tag'
-                  : modal.type === 'subtaskNew'
-                    ? 'New Subtask'
-                    : modal.type === 'subtaskEdit'
-                      ? 'Edit Subtask'
-                      : modal.type === 'editTitle' && modal.taskId === -1
-                        ? 'New Task - Title'
-                        : modal.type === 'editDescription' && modal.taskId === -1
-                          ? 'New Task - Description'
-                          : modal.type === 'editTitle'
-                            ? 'Edit - Title'
-                            : 'Edit - Description'}
+                {getInputModalTitle(modal)}
               </strong>
             </text>
             <input
               style={{ width: '100%', padding: 1 }}
-              value={'value' in modal ? modal.value : ''}
+              value={modal.value}
               focused
               placeholder={
-                modal.type === 'newTag'
-                  ? 'Enter tag name...'
-                  : modal.type === 'subtaskNew'
-                    ? 'Enter subtask title...'
-                    : 'Enter text...'
+                  modal.type === 'subtaskNew'
+                  ? 'Enter subtask title...'
+                  : 'Enter text...'
               }
               onInput={onInput}
               onSubmit={onSubmit}
@@ -115,7 +179,7 @@ export function Modal({ modal, onInput, onSubmit }: ModalProps) {
               <Pill label="Cancel" hotkey="Esc" />
             </box>
           </>
-        )}
+        ) : null}
       </box>
     </box>
   );

@@ -46,7 +46,8 @@ async function handleAddSubtask(args: CommandArgs, taskManager: TaskManager): Pr
     return;
   }
 
-  const tag = typeof args.flags.tag === 'string' ? args.flags.tag : (typeof args.flags.t === 'string' ? args.flags.t : undefined);
+  const tag = args.flags.tag as string || args.flags.t as string;
+
   try {
     const subtask = taskManager.addSubtask(parentTaskId, title, tag);
     
@@ -74,8 +75,9 @@ async function handleListSubtasks(args: CommandArgs, taskManager: TaskManager): 
     return;
   }
 
+  const tag = args.flags.tag as string || args.flags.t as string;
+
   try {
-    const tag = typeof args.flags.tag === 'string' ? args.flags.tag : (typeof args.flags.t === 'string' ? args.flags.t : undefined);
     const task = taskManager.getTask(parentTaskId, tag);
     
     if (!task) {
@@ -138,8 +140,9 @@ async function handleUpdateSubtaskStatus(args: CommandArgs, taskManager: TaskMan
     return;
   }
 
+  const tag = args.flags.tag as string || args.flags.t as string;
+
   try {
-    const tag = typeof args.flags.tag === 'string' ? args.flags.tag : (typeof args.flags.t === 'string' ? args.flags.t : undefined);
     const updatedSubtask = taskManager.updateSubtaskStatus(parentTaskId, subtaskId, status, tag);
     
     if (!updatedSubtask) {

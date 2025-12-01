@@ -27,3 +27,6 @@ export const STATUS_COLORS: Record<TaskStatus, string> = {
 };
 
 export const STATUS_SEQUENCE: TaskStatus[] = ['PENDING', 'INPROGRESS', 'DONE'];
+
+// Layout breakpoints
+export const COMPACT_MODE_BREAKPOINT = 150;
