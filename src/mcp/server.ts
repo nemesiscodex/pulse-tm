@@ -12,8 +12,14 @@ import { getProjectPath } from '../utils/project-path.js';
 import { formatTagList } from '../utils/tag-list.js';
 
 // Helper function to serialize task for MCP response
-function serializeTask(task: Task, taskManager: TaskManager): Record<string, unknown> {
-  const tagDetails = taskManager.getTagDetails(task.tag);
+function serializeTask(
+  task: Task,
+  taskManager: TaskManager,
+  getTagDetails?: (tag: string) => ReturnType<typeof taskManager.getTagDetails>
+): Record<string, unknown> {
+  const tagDetails = getTagDetails
+    ? getTagDetails(task.tag)
+    : taskManager.getTagDetails(task.tag);
   return {
     id: task.id,
     title: task.title,
@@ -33,6 +39,21 @@ function serializeTask(task: Task, taskManager: TaskManager): Record<string, unk
     createdAt: task.createdAt.toISOString(),
     updatedAt: task.updatedAt.toISOString()
   };
+}
+
+// Helper function to serialize multiple tasks with tag details caching
+function serializeTasks(tasks: Task[], taskManager: TaskManager): Record<string, unknown>[] {
+  // Cache tag details for batch serialization
+  const tagCache = new Map<string, ReturnType<typeof taskManager.getTagDetails>>();
+  const getTagDetailsCached = (tag: string) => {
+    if (!tagCache.has(tag)) {
+      tagCache.set(tag, taskManager.getTagDetails(tag));
+    }
+    // We know it exists because we just checked/set it above
+    return tagCache.get(tag)!;
+  };
+
+  return tasks.map(t => serializeTask(t, taskManager, getTagDetailsCached));
 }
 
 // Define available tools
@@ -65,7 +86,7 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'pulse_update_task',
-    description: 'Update a task or subtask (title/status; description is task-only)',
+    description: 'Update a task or subtask (title/status; description is task-only). At least one update field (title, description, status, or tag) must be provided.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -291,6 +312,10 @@ Do not skip steps. Always keep task and subtask status in sync with your actual 
             // Update task
             // Note: status and other fields are applied in separate calls. Tag changes use the original tag for lookup.
             // If tag is being changed, find the task first to get its current tag for proper lookup.
+            if (!status && !title && !description && !tag) {
+              return { content: [{ type: 'text', text: 'No updates provided for task' }], isError: true };
+            }
+
             let lookupTag: string | undefined = tag;
             if (tag) {
               // Tag is being changed - find the task to get its current tag for lookup
@@ -367,7 +392,7 @@ Do not skip steps. Always keep task and subtask status in sync with your actual 
           return {
             content: [{
               type: 'text',
-              text: `Found ${tasks.length} task(s):\n${JSON.stringify(tasks.map(t => serializeTask(t, taskManager)), null, 2)}`
+              text: `Found ${tasks.length} task(s):\n${JSON.stringify(serializeTasks(tasks, taskManager), null, 2)}`
             }],
           };
         }
