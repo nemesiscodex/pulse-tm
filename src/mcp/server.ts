@@ -180,15 +180,24 @@ export async function startMcpServer(workingDir?: string): Promise<void> {
 Create tasks and subtasks within tags to complete the epic.
 Use tag descriptions to store context, such as paths to PRD documents or project overviews. This helps you understand the goal when working on tasks in that tag.
 When asked to "continue work for [feature]", find the related tag and use pulse_get_tasks with mode="next".
-Tasks follow PENDING → INPROGRESS → DONE and typically should be completed in order.
-The best way to use the tools is to take the next task, set it to INPROGRESS, then once the task is done change it to DONE.
-Using these states (PENDING, INPROGRESS, DONE) is mandatory.
+
+TASKS AND SUBTASKS:
+- Tasks are the main work items within a tag/epic.
+- Subtasks break down complex tasks into more specific, actionable work items.
+- Use subtasks when a task is large or complex and needs to be broken into smaller steps.
+- Both tasks and subtasks follow the same workflow: PENDING → INPROGRESS → DONE.
+- Subtasks help track progress within a task and make it easier to work incrementally.
+
+WORKFLOW STATES:
+Tasks and subtasks follow PENDING → INPROGRESS → DONE and typically should be completed in order.
+Using these states (PENDING, INPROGRESS, DONE) is mandatory for both tasks and subtasks.
+
 STRICT WORKFLOW:
-1. Pick a task (pulse_get_tasks mode="next" or mode="list").
+1. Pick a task or subtask (pulse_get_tasks mode="next" or mode="list").
 2. Move it to INPROGRESS (pulse_update_task status="INPROGRESS").
 3. Work on it.
 4. Move it to DONE (pulse_update_task status="DONE") when finished.
-Do not skip steps. Always keep task status in sync with your actual work.`,
+Do not skip steps. Always keep task and subtask status in sync with your actual work.`,
     }
   );
 
