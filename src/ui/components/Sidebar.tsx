@@ -1,5 +1,6 @@
 import { colors } from '../theme';
 import { Pill } from './Pill';
+import { SHORTCUTS } from '../shortcuts';
 
 interface SidebarProps {
   width: number;
@@ -11,6 +12,10 @@ interface SidebarProps {
 
 export function Sidebar({ width, tags, activeTag, focused, fullWidth }: SidebarProps) {
   const sidebarWidth = width < 100 ? 24 : width < 140 ? 32 : 40;
+  
+  const tagNav = SHORTCUTS.NAVIGATION.find(s => s.action === 'cycle_tags');
+  const sidebarToggle = SHORTCUTS.NAVIGATION.find(s => s.action === 'toggle_sidebar');
+
   return (
     <box style={{
       width: fullWidth ? '100%' : sidebarWidth,
@@ -39,8 +44,8 @@ export function Sidebar({ width, tags, activeTag, focused, fullWidth }: SidebarP
         </box>
       </scrollbox>
       <box style={{ marginTop: 'auto', flexDirection: 'column', gap: 0 }}>
-        <Pill label="Tag" hotkey="[ / ]" />
-        <Pill label="Sidebar" hotkey="b" />
+        {tagNav && <Pill label={tagNav.label} hotkey={tagNav.key} />}
+        {sidebarToggle && <Pill label={sidebarToggle.label} hotkey={sidebarToggle.key} />}
       </box>
     </box>
   );

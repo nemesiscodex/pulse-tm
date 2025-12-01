@@ -37,3 +37,5 @@ No task data is sent to any remote server by default.
 When using the MCP server (`pulse mcp`), AI tools that you connect to Pulse may read or modify your local tasks according to their own configuration and privacy policies. Review those tools carefully before granting access.
 
 
+
+

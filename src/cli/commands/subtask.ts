@@ -10,7 +10,7 @@ export async function handleSubtask(args: CommandArgs): Promise<void> {
   }
 
   const action = args.args[0]!;
-  const taskManager = new TaskManager(args.workingDir);
+  const taskManager = new TaskManager();
 
   switch (action) {
     case 'add':
@@ -46,9 +46,8 @@ async function handleAddSubtask(args: CommandArgs, taskManager: TaskManager): Pr
     return;
   }
 
-  const tag = typeof args.flags.tag === 'string' ? args.flags.tag : (typeof args.flags.t === 'string' ? args.flags.t : undefined);
   try {
-    const subtask = taskManager.addSubtask(parentTaskId, title, tag);
+    const subtask = taskManager.addSubtask(parentTaskId, title);
     
     if (!subtask) {
       console.error(`Error: Parent task #${parentTaskId} not found.`);
@@ -75,8 +74,7 @@ async function handleListSubtasks(args: CommandArgs, taskManager: TaskManager): 
   }
 
   try {
-    const tag = typeof args.flags.tag === 'string' ? args.flags.tag : (typeof args.flags.t === 'string' ? args.flags.t : undefined);
-    const task = taskManager.getTask(parentTaskId, tag);
+    const task = taskManager.getTask(parentTaskId);
     
     if (!task) {
       console.error(`Error: Task #${parentTaskId} not found.`);
@@ -139,8 +137,7 @@ async function handleUpdateSubtaskStatus(args: CommandArgs, taskManager: TaskMan
   }
 
   try {
-    const tag = typeof args.flags.tag === 'string' ? args.flags.tag : (typeof args.flags.t === 'string' ? args.flags.t : undefined);
-    const updatedSubtask = taskManager.updateSubtaskStatus(parentTaskId, subtaskId, status, tag);
+    const updatedSubtask = taskManager.updateSubtaskStatus(parentTaskId, subtaskId, status);
     
     if (!updatedSubtask) {
       console.error(`Error: Subtask ${parentTaskId}.${subtaskId} not found.`);

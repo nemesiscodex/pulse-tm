@@ -321,6 +321,27 @@ export class TaskManager {
     return true;
   }
 
+  swapTaskOrders(taskId1: number, taskId2: number, tag: string): boolean {
+    const normalized = sanitizeTagName(tag);
+    if (!isValidTagName(normalized)) return false;
+
+    const tagFile = this.storage.loadTagFile(normalized);
+    const t1 = tagFile.tasks.find(t => t.id === taskId1);
+    const t2 = tagFile.tasks.find(t => t.id === taskId2);
+
+    if (!t1 || !t2) return false;
+
+    const temp = t1.order;
+    t1.order = t2.order;
+    t2.order = temp;
+
+    t1.updatedAt = new Date();
+    t2.updatedAt = new Date();
+
+    this.storage.saveTagFile(normalized, tagFile);
+    return true;
+  }
+
   getTagDetails(tag: string): { description?: string; taskCount: number } | null {
     const normalized = sanitizeTagName(tag);
     if (!isValidTagName(normalized)) return null;
