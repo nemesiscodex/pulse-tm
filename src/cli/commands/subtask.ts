@@ -10,7 +10,7 @@ export async function handleSubtask(args: CommandArgs): Promise<void> {
   }
 
   const action = args.args[0]!;
-  const taskManager = new TaskManager();
+  const taskManager = new TaskManager(args.workingDir);
 
   switch (action) {
     case 'add':
@@ -46,8 +46,10 @@ async function handleAddSubtask(args: CommandArgs, taskManager: TaskManager): Pr
     return;
   }
 
+  const tag = args.flags.tag as string || args.flags.t as string;
+
   try {
-    const subtask = taskManager.addSubtask(parentTaskId, title);
+    const subtask = taskManager.addSubtask(parentTaskId, title, tag);
     
     if (!subtask) {
       console.error(`Error: Parent task #${parentTaskId} not found.`);
@@ -73,8 +75,10 @@ async function handleListSubtasks(args: CommandArgs, taskManager: TaskManager): 
     return;
   }
 
+  const tag = args.flags.tag as string || args.flags.t as string;
+
   try {
-    const task = taskManager.getTask(parentTaskId);
+    const task = taskManager.getTask(parentTaskId, tag);
     
     if (!task) {
       console.error(`Error: Task #${parentTaskId} not found.`);
@@ -136,8 +140,10 @@ async function handleUpdateSubtaskStatus(args: CommandArgs, taskManager: TaskMan
     return;
   }
 
+  const tag = args.flags.tag as string || args.flags.t as string;
+
   try {
-    const updatedSubtask = taskManager.updateSubtaskStatus(parentTaskId, subtaskId, status);
+    const updatedSubtask = taskManager.updateSubtaskStatus(parentTaskId, subtaskId, status, tag);
     
     if (!updatedSubtask) {
       console.error(`Error: Subtask ${parentTaskId}.${subtaskId} not found.`);
