@@ -289,18 +289,30 @@ Do not skip steps. Always keep task and subtask status in sync with your actual 
             };
           } else {
             // Update task
-            // Note: status and other fields are applied in separate calls, so partial updates are possible if the second write fails.
+            // Note: status and other fields are applied in separate calls. Tag changes use the original tag for lookup.
+            // If tag is being changed, find the task first to get its current tag for proper lookup.
+            let lookupTag: string | undefined = tag;
+            if (tag) {
+              // Tag is being changed - find the task to get its current tag for lookup
+              const currentTask = taskManager.getTask(task_id);
+              if (!currentTask) {
+                return { content: [{ type: 'text', text: `Task ${task_id} not found` }], isError: true };
+              }
+              lookupTag = currentTask.tag; // Use current tag for lookup, new tag will be applied in updateTask
+            }
+
             if (status) {
-              const task = taskManager.updateTaskStatus(task_id, status, tag);
+              const task = taskManager.updateTaskStatus(task_id, status, lookupTag);
               if (!task) return { content: [{ type: 'text', text: `Task ${task_id} not found` }], isError: true };
             }
             if (title || description || tag) {
               const task = taskManager.updateTask(task_id, { title, description, tag });
               if (!task) return { content: [{ type: 'text', text: `Task ${task_id} not found` }], isError: true };
             }
-            
-            // Fetch updated task to show result
-            const updatedTask = taskManager.getTask(task_id, tag);
+
+            // Fetch updated task to show result - use the new tag if it was changed, otherwise use lookupTag
+            const resultTag = tag || lookupTag;
+            const updatedTask = taskManager.getTask(task_id, resultTag);
             if (!updatedTask) {
               return { content: [{ type: 'text', text: `Task ${task_id} not found after update` }], isError: true };
             }
@@ -376,7 +388,7 @@ Do not skip steps. Always keep task and subtask status in sync with your actual 
           if (action === 'update') {
             if (!tag || !description) return { content: [{ type: 'text', text: 'Tag and description required for update' }], isError: true };
             const success = taskManager.updateTag(tag, description);
-            return success 
+            return success
               ? { content: [{ type: 'text', text: `Tag "${tag}" updated successfully` }] }
               : { content: [{ type: 'text', text: `Tag "${tag}" not found` }], isError: true };
           }
@@ -388,7 +400,7 @@ Do not skip steps. Always keep task and subtask status in sync with your actual 
               ? { content: [{ type: 'text', text: `Tag "${tag}" deleted successfully` }] }
               : { content: [{ type: 'text', text: `Tag "${tag}" not found` }], isError: true };
           }
-          
+
           return { content: [{ type: 'text', text: `Unknown action: ${action}` }], isError: true };
         }
 

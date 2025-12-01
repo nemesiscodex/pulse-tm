@@ -51,7 +51,7 @@ export class TaskManager {
     tagFile.tasks.push(task);
     tagFile.next_id++;
     
-    this.storage.saveTagFile(tag, tagFile);
+    this.storage.saveTagFile(normalizedTag, tagFile);
     
     return task;
   }

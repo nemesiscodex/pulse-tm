@@ -16,7 +16,7 @@ export const SHORTCUTS = {
     { key: 'r', label: 'Refresh', action: 'refresh' },
   ],
   NAVIGATION: [
-    { key: 'Arrows ↑↓', label: 'Navigate', action: 'navigate' },
+    { key: 'Arrows', label: 'Navigate', action: 'navigate' },
     { key: 'Enter', label: 'Focus Subtasks', action: 'focus_subtasks' },
     { key: 'Esc', label: 'Back', action: 'back' },
     { key: 'b', label: 'Sidebar', action: 'toggle_sidebar' },

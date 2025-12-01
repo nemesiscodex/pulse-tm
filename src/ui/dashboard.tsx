@@ -203,6 +203,21 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
   const beginDeleteTag = useCallback(() => { if (activeTag && activeTag !== 'base') setModal({ type: 'confirmDelete', taskId: -1, tag: activeTag }); }, [activeTag]);
   const beginInspectTag = useCallback(() => { if (activeTag) setModal({ type: 'inspectTag', tagName: activeTag, description: tagDetails?.description || '', taskCount: tasks.length }); }, [activeTag, tagDetails, tasks.length]);
 
+  const handleModalInput = useCallback((v: string, field?: string) => {
+    setModal(m => {
+      if (!m) return null;
+      if (m.type === 'newTagCombined') {
+        if (field === 'name') return { ...m, name: v };
+        if (field === 'description') return { ...m, description: v };
+        return m;
+      }
+      if (m.type !== 'confirmDelete' && m.type !== 'confirmDeleteSubtask' && m.type !== 'inspectTag' && m.type !== 'help' && m.type !== 'confirmComplete') {
+        return { ...m, value: v };
+      }
+      return m;
+    });
+  }, []);
+
   const submitModal = useCallback((value: string) => {
     if (!modal) return;
     
@@ -217,8 +232,30 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
             const normalized = sanitizeTagName(name);
             if (!isValidTagName(normalized)) return notify('Invalid tag name');
             if (tags.includes(normalized)) {
-                 setActiveTag(normalized);
-                 notify(`Switched to tag "${normalized}"`);
+                 const newDescription = modal.description.trim();
+                 const existingTagDetails = manager.getTagDetails(normalized);
+                 const existingDescription = existingTagDetails?.description || '';
+                 
+                 // If user provided a description and it's different from existing, update it
+                 if (newDescription && newDescription !== existingDescription) {
+                     try {
+                         const updated = manager.updateTag(normalized, newDescription);
+                         if (updated) {
+                             setActiveTag(normalized);
+                             notify(`Updated tag "${normalized}"`);
+                         } else {
+                             notify(`Failed to update tag "${normalized}"`);
+                             return;
+                         }
+                     } catch (error) {
+                         notify(`Error updating tag: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                         return;
+                     }
+                 } else {
+                     // Description is empty or unchanged, just switch to tag
+                     setActiveTag(normalized);
+                     notify(`Switched to tag "${normalized}"`);
+                 }
             } else {
                  manager.createTag(normalized, modal.description.trim());
                  setActiveTag(normalized);
@@ -401,18 +438,7 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
         {modal ? (
           <Modal
             modal={modal}
-            onInput={(v, field) => setModal(m => {
-                if (!m) return null;
-                if (m.type === 'newTagCombined') {
-                    if (field === 'name') return { ...m, name: v };
-                    if (field === 'description') return { ...m, description: v };
-                    return m;
-                }
-                if (m.type !== 'confirmDelete' && m.type !== 'confirmDeleteSubtask' && m.type !== 'inspectTag' && m.type !== 'help' && m.type !== 'confirmComplete') {
-                    return { ...m, value: v };
-                }
-                return m;
-            })}
+            onInput={handleModalInput}
             onSubmit={submitModal}
           />
         ) : null}
@@ -500,18 +526,7 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
         {modal ? (
           <Modal
             modal={modal}
-             onInput={(v, field) => setModal(m => {
-                if (!m) return null;
-                if (m.type === 'newTagCombined') {
-                    if (field === 'name') return { ...m, name: v };
-                    if (field === 'description') return { ...m, description: v };
-                    return m;
-                }
-                if (m.type !== 'confirmDelete' && m.type !== 'confirmDeleteSubtask' && m.type !== 'inspectTag' && m.type !== 'help' && m.type !== 'confirmComplete') {
-                    return { ...m, value: v };
-                }
-                return m;
-            })}
+            onInput={handleModalInput}
             onSubmit={submitModal}
           />
         ) : null}
@@ -739,18 +754,7 @@ function BoardApp({ workingDir }: { workingDir?: string }) {
       {modal ? (
         <Modal
           modal={modal}
-          onInput={(v, field) => setModal(m => {
-            if (!m) return null;
-            if (m.type === 'newTagCombined') {
-                if (field === 'name') return { ...m, name: v };
-                if (field === 'description') return { ...m, description: v };
-                return m;
-            }
-            if (m.type !== 'confirmDelete' && m.type !== 'confirmDeleteSubtask' && m.type !== 'inspectTag' && m.type !== 'help' && m.type !== 'confirmComplete') {
-                return { ...m, value: v };
-            }
-            return m;
-          })}
+          onInput={handleModalInput}
           onSubmit={submitModal}
         />
       ) : null}
