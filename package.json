@@ -1,6 +1,6 @@
 {
   "name": "pulse-tm",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "Terminal task manager with TUI, CLI, and MCP server support",
   "keywords": [
     "task-manager",
@@ -44,7 +44,7 @@
   },
   "scripts": {
     "pulse": "bun run src/index.ts",
-    "build": "bun build src/index.ts --outdir dist --target bun --minify",
+    "build": "bun build src/index.ts --outdir dist --target bun --minify --external @opentui/* --external @modelcontextprotocol/sdk --external react --external yaml --external prompts",
     "prepare": "bun run build && chmod +x dist/index.js",
     "lint": "bun tsc --noEmit && eslint src --ext .ts,.tsx",
     "test": "vitest run --dir tests",
